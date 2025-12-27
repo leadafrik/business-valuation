@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  valuations Valuation[]
+  accounts   Account[]
+  sessions   Session[]
+
+  @@map("users")
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
+
+model Valuation {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  businessName      String
+  businessDescription String?
+  sector            String    // retail, hospitality, agribusiness, tech, manufacturing, services
+  valuationDate     DateTime  @default(now())
+  
+  // Financial Data
+  annualRevenue     Float
+  ebitda            Float?
+  netIncome         Float?
+  freeCashFlow      Float?
+  totalAssets       Float?
+  totalLiabilities  Float?
+  
+  // Assumptions
+  discountRate      Float?    // WACC
+  terminalGrowth    Float?    @default(0.04)
+  projectionYears   Int?      @default(5)
+  
+  // Valuation Results
+  valuationType     String    // dcf, comparable, asset-based, multiple
+  valuationValue    Float
+  valuationMultiple Float?
+  
+  // Additional fields
+  assumptions       Json?     // JSON field for flexible assumption storage
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("valuations")
+}
+
+model SectorData {
+  id                    String  @id @default(cuid())
+  sector                String  @unique
+  description           String?
+  typicalEbitdaMultiple Float?
+  typicalRevenueMultiple Float?
+  typicalDiscountRate   Float?
+  riskProfile           String? // low, moderate, high
+  updatedAt             DateTime @updatedAt
+
+  @@map("sector_data")
+}
