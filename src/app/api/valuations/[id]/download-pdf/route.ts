@@ -36,12 +36,31 @@ export async function GET(
       );
     }
 
-    const scenarios = valuation.scenariosData
-      ? JSON.parse(valuation.scenariosData as string)
-      : {};
-    const valueDrivers = valuation.valueDriversData
-      ? JSON.parse(valuation.valueDriversData as string)
-      : [];
+    const scenarios = (() => {
+      try {
+        return valuation.scenariosData
+          ? typeof valuation.scenariosData === 'string'
+            ? JSON.parse(valuation.scenariosData)
+            : valuation.scenariosData
+          : {};
+      } catch (e) {
+        console.error('Failed to parse scenarios:', e);
+        return {};
+      }
+    })();
+    
+    const valueDrivers = (() => {
+      try {
+        return valuation.valueDriversData
+          ? typeof valuation.valueDriversData === 'string'
+            ? JSON.parse(valuation.valueDriversData)
+            : valuation.valueDriversData
+          : [];
+      } catch (e) {
+        console.error('Failed to parse valueDrivers:', e);
+        return [];
+      }
+    })();
 
     // Create PDF
     const doc = new PDFDocument({

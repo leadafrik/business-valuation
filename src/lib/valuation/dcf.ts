@@ -32,6 +32,23 @@ export function calculateDCF(inputs: DCFInputs): DCFResult {
     terminalGrowth,
   } = inputs;
 
+  // Validate inputs to prevent invalid calculations
+  if (discountRate <= terminalGrowth) {
+    throw new Error('Discount rate must be greater than terminal growth rate');
+  }
+  
+  if (terminalGrowth < 0 || terminalGrowth > 0.05) {
+    throw new Error('Terminal growth should be between 0% and 5%');
+  }
+  
+  if (discountRate <= 0 || discountRate > 0.5) {
+    throw new Error('Discount rate should be between 0% and 50%');
+  }
+  
+  if (growthRate < 0 || growthRate > 0.5) {
+    throw new Error('Growth rate should be between 0% and 50%');
+  }
+
   // Project FCF for N years
   const breakdown: DCFResult["breakdown"] = [];
   let totalPV = 0;
@@ -52,6 +69,7 @@ export function calculateDCF(inputs: DCFInputs): DCFResult {
   }
 
   // Terminal Value (Gordon Growth Model)
+  // Note: This formula requires discountRate > terminalGrowth (validated above)
   const finalYearFCF =
     initialFCF * Math.pow(1 + growthRate, projectionYears);
   const terminalValue =

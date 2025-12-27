@@ -1,16 +1,39 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { KENYAN_SECTOR_PROFILES } from '@/lib/valuation/sectorData';
+
+interface FormData {
+  sector?: string;
+  totalAssets?: number;
+  totalLiabilities?: number;
+  businessName?: string;
+  annualRevenue?: number;
+  [key: string]: any;
+}
 
 function AssumptionCheckForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [error, setError] = useState('');
 
-  // Parse form data from URL params
+  // Parse form data from URL params with error handling
+  let formData: FormData = {};
   const formDataStr = searchParams.get('data');
-  const formData = formDataStr ? JSON.parse(decodeURIComponent(formDataStr)) : {};
+  if (formDataStr) {
+    try {
+      formData = JSON.parse(decodeURIComponent(formDataStr));
+    } catch (err) {
+      console.error('Failed to parse form data:', err);
+      setError('Invalid form data. Please start over.');
+      // Redirect back to form after a delay
+      useEffect(() => {
+        const timer = setTimeout(() => router.push('/valuation/new'), 2000);
+        return () => clearTimeout(timer);
+      }, []);
+    }
+  }
 
   const [assumptions, setAssumptions] = useState({
     terminalGrowthCheck: 'moderate',
@@ -21,14 +44,13 @@ function AssumptionCheckForm() {
     riskFactors: [] as string[],
   });
 
-  const [error, setError] = useState('');
-  const sector = KENYAN_SECTOR_PROFILES[formData.sector];
+  const sector = formData.sector ? KENYAN_SECTOR_PROFILES[formData.sector] : undefined;
   const baseWACC = sector ? sector.baseDiscountRate * 100 : 20;
 
   // Calculate risk adjustment from leverage
   const leverageRatio =
-    formData.totalAssets > 0
-      ? (formData.totalLiabilities / formData.totalAssets) * 100
+    formData.totalAssets && formData.totalAssets > 0
+      ? ((formData.totalLiabilities || 0) / formData.totalAssets) * 100
       : 0;
   const leverageAdjustment = leverageRatio > 50 ? 2 : leverageRatio > 30 ? 1 : 0;
   const riskAdjustment = assumptions.riskFactors.length * 0.5;
@@ -307,7 +329,7 @@ function AssumptionCheckForm() {
 
               <div className="space-y-2 text-sm mb-4">
                 <div className="flex justify-between">
-                  <span>Base Sector Rate ({KENYAN_SECTOR_PROFILES[formData.sector]?.sector}):</span>
+                  <span>Base Sector Rate ({formData.sector ? KENYAN_SECTOR_PROFILES[formData.sector]?.sector : 'Unknown'}):</span>
                   <span className="font-semibold">{baseWACC.toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between">

@@ -22,7 +22,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    console.log("Valuation POST body:", JSON.stringify(body, null, 2));
+    // Log only non-sensitive fields to prevent PII exposure
+    console.log("Valuation calculation started for:", {
+      sector: body.sector,
+      businessName: body.businessName ? "[REDACTED]" : "[MISSING]",
+      timestamp: new Date().toISOString(),
+    });
     
     const {
       businessName,
@@ -38,15 +43,6 @@ export async function POST(req: NextRequest) {
       terminalGrowth = 0.04,
       projectionYears = 5,
     } = body;
-    
-    console.log("Parsed values:", {
-      annualRevenue,
-      ebitda,
-      netIncome,
-      freeCashFlow,
-      totalAssets,
-      totalLiabilities,
-    });
 
     // Get user
     const user = await prisma.user.findUnique({
@@ -79,7 +75,27 @@ export async function POST(req: NextRequest) {
     const sectorProfile = KENYAN_SECTOR_PROFILES[sector];
     const wacc = normalizedDiscountRate || getWACC(sector);
     
-    console.log("WACC:", wacc, "sector:", sector, "normalized discount rate:", normalizedDiscountRate);
+    // Validate DCF assumptions before calculations
+    if (terminalGrowth >= wacc) {
+      return NextResponse.json(
+        { error: "Terminal growth rate must be less than discount rate" },
+        { status: 400 }
+      );
+    }
+    
+    if (terminalGrowth < 0 || terminalGrowth > 0.05) {
+      return NextResponse.json(
+        { error: "Terminal growth rate should be between 0% and 5%" },
+        { status: 400 }
+      );
+    }
+    
+    if (wacc <= 0 || wacc > 0.5) {
+      return NextResponse.json(
+        { error: "Invalid discount rate (WACC). Expected value between 0% and 50%." },
+        { status: 400 }
+      );
+    }
 
     const results: any[] = [];
 
@@ -110,7 +126,14 @@ export async function POST(req: NextRequest) {
           },
         });
       } catch (error) {
-        console.log("DCF calculation error:", error);
+        console.error("DCF calculation error:", error instanceof Error ? error.message : String(error));
+        // Return error with specific message from DCF calculation
+        if (error instanceof Error && error.message.includes('Discount rate')) {
+          return NextResponse.json(
+            { error: error.message },
+            { status: 400 }
+          );
+        }
       }
     }
 

@@ -1,19 +1,20 @@
 import nodemailer from 'nodemailer';
 
+// Consolidated SMTP configuration - supports both SMTP_* and EMAIL_* env vars for backward compatibility
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: parseInt(process.env.EMAIL_PORT || '587'),
-  secure: false,
+  host: process.env.SMTP_HOST || process.env.EMAIL_HOST,
+  port: parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || '587'),
+  secure: (process.env.SMTP_SECURE || 'false').toLowerCase() === 'true',
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.SMTP_USER || process.env.EMAIL_USER,
+    pass: process.env.SMTP_PASS || process.env.EMAIL_PASS,
   },
 });
 
 export async function sendOTPEmail(email: string, otp: string) {
   try {
     await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
+      from: process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@valueke.com',
       to: email,
       subject: 'Your ValueKE OTP Code',
       html: `

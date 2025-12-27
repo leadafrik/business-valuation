@@ -178,19 +178,38 @@ export async function POST(
       );
     }
 
-    const scenarios = valuation.scenariosData
-      ? JSON.parse(valuation.scenariosData as string)
-      : {};
-    const valueDrivers = valuation.valueDriversData
-      ? JSON.parse(valuation.valueDriversData as string)
-      : [];
+    const scenarios_parsed = (() => {
+      try {
+        return valuation.scenariosData
+          ? typeof valuation.scenariosData === 'string'
+            ? JSON.parse(valuation.scenariosData)
+            : valuation.scenariosData
+          : {};
+      } catch (e) {
+        console.error('Failed to parse scenarios:', e);
+        return {};
+      }
+    })();
+    
+    const valueDrivers_parsed = (() => {
+      try {
+        return valuation.valueDriversData
+          ? typeof valuation.valueDriversData === 'string'
+            ? JSON.parse(valuation.valueDriversData)
+            : valuation.valueDriversData
+          : [];
+      } catch (e) {
+        console.error('Failed to parse valueDrivers:', e);
+        return [];
+      }
+    })();
 
     // Generate PDF
-    const pdfBuffer = await generatePDF(valuation, scenarios, valueDrivers);
+    const pdfBuffer = await generatePDF(valuation, scenarios_parsed, valueDrivers_parsed);
 
     // Send email with PDF attachment
     await transporter.sendMail({
-      from: process.env.SMTP_FROM,
+      from: process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@valueke.com',
       to: email,
       subject: `Valuation Report: ${valuation.businessName}`,
       html: `
@@ -199,9 +218,9 @@ export async function POST(
         <p>Please find attached your valuation report for <strong>${valuation.businessName}</strong>.</p>
         <p><strong>Valuation Summary:</strong></p>
         <ul>
-          <li>Conservative (Bank View): KES ${scenarios.conservative?.weightedValue?.toLocaleString() || 0}</li>
-          <li>Base Case (Market View): KES ${scenarios.base?.weightedValue?.toLocaleString() || 0}</li>
-          <li>Upside (Buyer View): KES ${scenarios.upside?.weightedValue?.toLocaleString() || 0}</li>
+          <li>Conservative (Bank View): KES ${scenarios_parsed.conservative?.weightedValue?.toLocaleString() || 0}</li>
+          <li>Base Case (Market View): KES ${scenarios_parsed.base?.weightedValue?.toLocaleString() || 0}</li>
+          <li>Upside (Buyer View): KES ${scenarios_parsed.upside?.weightedValue?.toLocaleString() || 0}</li>
         </ul>
         <p>Use these valuations for fundraising, lending, or strategic decisions.</p>
         <p>Best regards,<br/>Business Valuation Tool</p>

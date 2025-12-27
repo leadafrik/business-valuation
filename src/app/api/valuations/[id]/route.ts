@@ -32,13 +32,33 @@ export async function GET(
       return NextResponse.json({ error: "Valuation not found" }, { status: 404 });
     }
 
-    // Parse JSON fields
-    const scenarios = valuation.scenariosData
-      ? JSON.parse(valuation.scenariosData as string)
-      : {};
-    const valueDrivers = valuation.valueDriversData
-      ? JSON.parse(valuation.valueDriversData as string)
-      : [];
+    // Parse JSON fields with error handling
+    let scenarios = {};
+    let valueDrivers: any[] = [];
+    
+    try {
+      if (valuation.scenariosData) {
+        // Handle both JSON string and object formats
+        scenarios = typeof valuation.scenariosData === 'string'
+          ? JSON.parse(valuation.scenariosData)
+          : valuation.scenariosData;
+      }
+    } catch (parseError) {
+      console.error('Failed to parse scenariosData:', parseError);
+      scenarios = {};
+    }
+    
+    try {
+      if (valuation.valueDriversData) {
+        // Handle both JSON string and object formats
+        valueDrivers = typeof valuation.valueDriversData === 'string'
+          ? JSON.parse(valuation.valueDriversData)
+          : valuation.valueDriversData;
+      }
+    } catch (parseError) {
+      console.error('Failed to parse valueDriversData:', parseError);
+      valueDrivers = [];
+    }
 
     return NextResponse.json({
       id: valuation.id,
