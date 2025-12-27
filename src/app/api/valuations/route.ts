@@ -22,6 +22,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    console.log("Valuation POST body:", JSON.stringify(body, null, 2));
+    
     const {
       businessName,
       businessDescription,
@@ -36,6 +38,15 @@ export async function POST(req: NextRequest) {
       terminalGrowth = 0.04,
       projectionYears = 5,
     } = body;
+    
+    console.log("Parsed values:", {
+      annualRevenue,
+      ebitda,
+      netIncome,
+      freeCashFlow,
+      totalAssets,
+      totalLiabilities,
+    });
 
     // Get user
     const user = await prisma.user.findUnique({
@@ -67,6 +78,8 @@ export async function POST(req: NextRequest) {
     // Calculate valuations
     const sectorProfile = KENYAN_SECTOR_PROFILES[sector];
     const wacc = normalizedDiscountRate || getWACC(sector);
+    
+    console.log("WACC:", wacc, "sector:", sector, "normalized discount rate:", normalizedDiscountRate);
 
     const results: any[] = [];
 
@@ -186,6 +199,13 @@ export async function POST(req: NextRequest) {
 
     const finalValuation =
       weightedValue > 0 ? weightedValue / totalWeight : 0;
+    
+    console.log("Calculation results:", {
+      results,
+      weightedValue,
+      totalWeight,
+      finalValuation
+    });
 
     // Calculate scenarios (Conservative/Base/Upside)
     const dcfValue = results.find((r) => r.type === "dcf")?.value || finalValuation;
@@ -236,6 +256,12 @@ export async function POST(req: NextRequest) {
       valueDrivers,
       sector: sectorProfile,
       savedAt: savedValuation.createdAt,
+      debug: {
+        resultsCount: results.length,
+        dcfValue: results.find((r) => r.type === "dcf")?.value,
+        comparableValue: results.find((r) => r.type === "comparable_revenue")?.value,
+        assetValue: results.find((r) => r.type === "asset_based")?.value,
+      }
     });
   } catch (error) {
     console.error("Valuation calculation error:", error);
