@@ -12,6 +12,8 @@ export default function NewValuation() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [autoWACC, setAutoWACC] = useState(true);
+  const [showWACCHelp, setShowWACCHelp] = useState(false);
 
   const [formData, setFormData] = useState({
     businessName: "",
@@ -27,6 +29,14 @@ export default function NewValuation() {
     terminalGrowth: 0.04,
     projectionYears: 5,
   });
+
+  // Get auto WACC based on sector
+  const getAutoWACC = () => {
+    const sectorData = KENYAN_SECTOR_PROFILES[formData.sector as keyof typeof KENYAN_SECTOR_PROFILES];
+    return sectorData ? Math.round(sectorData.baseDiscountRate * 100) : 20;
+  };
+
+  const discountRate = autoWACC ? getAutoWACC() : formData.discountRate;
 
   if (status === "unauthenticated") {
     router.push("/auth/signin");
@@ -64,10 +74,16 @@ export default function NewValuation() {
         return;
       }
 
+      // Use auto WACC if enabled, otherwise use manual
+      const submitData = {
+        ...formData,
+        discountRate: autoWACC ? getAutoWACC() : formData.discountRate,
+      };
+
       const res = await fetch("/api/valuations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       if (!res.ok) {
@@ -245,32 +261,76 @@ export default function NewValuation() {
             </fieldset>
 
             {/* Assumptions */}
-            <fieldset className="pb-6">
+            <fieldset className="pb-6 border border-blue-200 rounded-lg p-4 bg-blue-50">
               <legend className="text-lg font-semibold text-gray-800 mb-4">
                 Valuation Assumptions
               </legend>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-2">
-                    Discount Rate (WACC) - Optional
-                  </label>
+              {/* WACC Section */}
+              <div className="mb-6 p-4 bg-white rounded border border-blue-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <label className="block text-gray-700 font-semibold mb-2">
+                      Discount Rate (WACC)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowWACCHelp(!showWACCHelp)}
+                      className="text-blue-600 hover:underline text-sm"
+                    >
+                      💡 What is WACC?
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="autoWACC"
+                      checked={autoWACC}
+                      onChange={(e) => setAutoWACC(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <label htmlFor="autoWACC" className="text-gray-700 font-semibold">
+                      Auto Calculate
+                    </label>
+                  </div>
+                </div>
+
+                {showWACCHelp && (
+                  <div className="bg-blue-100 border-l-4 border-blue-600 p-4 mb-4 rounded">
+                    <p className="text-sm text-gray-700">
+                      <strong>WACC (Weighted Average Cost of Capital):</strong> The discount rate used to value a business. 
+                      It reflects the risk profile of your business based on the sector. Higher risk sectors have higher WACC.
+                    </p>
+                    <p className="text-sm text-gray-700 mt-2">
+                      <strong>Our estimate:</strong> {discountRate}% for {KENYAN_SECTOR_PROFILES[formData.sector].sector}
+                    </p>
+                    <p className="text-sm text-gray-700 mt-2">
+                      Enable "Auto Calculate" to use sector-specific rates, or enter your own based on your company's risk profile.
+                    </p>
+                  </div>
+                )}
+
+                {autoWACC ? (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded">
+                    <p className="text-gray-700">
+                      <strong>Auto WACC:</strong> {discountRate}% (Sector: {KENYAN_SECTOR_PROFILES[formData.sector].sector})
+                    </p>
+                  </div>
+                ) : (
                   <input
                     type="number"
                     name="discountRate"
                     value={formData.discountRate}
                     onChange={handleInputChange}
-                    step="0.01"
+                    step="0.1"
                     min="0"
-                    max="1"
+                    placeholder="Enter discount rate %"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Leave blank for sector default"
                   />
-                  <p className="text-sm text-gray-500 mt-1">
-                    (e.g., 0.25 for 25%)
-                  </p>
-                </div>
+                )}
+              </div>
 
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-700 font-semibold mb-2">
                     Terminal Growth Rate
@@ -285,6 +345,7 @@ export default function NewValuation() {
                     max="0.1"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
+                  <p className="text-sm text-gray-500 mt-1">(e.g., 0.04 for 4%)</p>
                 </div>
 
                 <div>
