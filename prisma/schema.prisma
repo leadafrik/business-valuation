@@ -98,6 +98,8 @@ model Valuation {
   
   // Additional fields
   assumptions       Json?     // JSON field for flexible assumption storage
+  scenariosData     Json?     // Conservative/Base/Upside scenarios with assumptions
+  valueDriversData  Json?     // Sector-specific value drivers with impact %
   notes             String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

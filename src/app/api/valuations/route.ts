@@ -11,6 +11,7 @@ import {
   getWACC,
   KENYAN_SECTOR_PROFILES,
 } from "@/lib/valuation/sectorData";
+import { calculateScenarios, VALUE_DRIVERS_BY_SECTOR } from "@/lib/valuation/scenarios";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -46,6 +47,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Prepare assumptions
+    const normalizedDiscountRate =
+      typeof discountRate === "number" && discountRate > 1
+        ? discountRate / 100
+        : discountRate;
+
     const assumptions: Record<string, any> = {
       annualRevenue,
       ebitda,
@@ -53,14 +59,14 @@ export async function POST(req: NextRequest) {
       freeCashFlow,
       totalAssets,
       totalLiabilities,
-      discountRate: discountRate || getWACC(sector),
+      discountRate: normalizedDiscountRate || getWACC(sector),
       terminalGrowth,
       projectionYears,
     };
 
     // Calculate valuations
     const sectorProfile = KENYAN_SECTOR_PROFILES[sector];
-    const wacc = discountRate || getWACC(sector);
+    const wacc = normalizedDiscountRate || getWACC(sector);
 
     const results: any[] = [];
 
@@ -181,6 +187,23 @@ export async function POST(req: NextRequest) {
     const finalValuation =
       weightedValue > 0 ? weightedValue / totalWeight : 0;
 
+    // Calculate scenarios (Conservative/Base/Upside)
+    const dcfValue = results.find((r) => r.type === "dcf")?.value || finalValuation;
+    const comparableValue = results.find((r) => r.type === "comparable_revenue")?.value || finalValuation;
+    const assetValue = results.find((r) => r.type === "asset_based")?.value || finalValuation;
+
+    const scenarios = calculateScenarios(
+      dcfValue,
+      comparableValue,
+      assetValue,
+      finalValuation,
+      wacc,
+      terminalGrowth
+    );
+
+    // Get value drivers for this sector
+    const valueDrivers = VALUE_DRIVERS_BY_SECTOR[sector] || [];
+
     // Save valuation to database
     const savedValuation = await prisma.valuation.create({
       data: {
@@ -200,6 +223,8 @@ export async function POST(req: NextRequest) {
         valuationType: "multiple",
         valuationValue: finalValuation,
         assumptions,
+        scenariosData: JSON.stringify(scenarios),
+        valueDriversData: JSON.stringify(valueDrivers),
       },
     });
 
@@ -207,6 +232,8 @@ export async function POST(req: NextRequest) {
       id: savedValuation.id,
       valuations: results,
       finalValuation,
+      scenarios,
+      valueDrivers,
       sector: sectorProfile,
       savedAt: savedValuation.createdAt,
     });

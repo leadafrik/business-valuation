@@ -2,14 +2,18 @@
 
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   const { data: session } = useSession();
+  const router = useRouter();
 
-  if (session) {
-    redirect("/dashboard");
-  }
+  useEffect(() => {
+    if (session) {
+      router.push("/dashboard");
+    }
+  }, [session, router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800">
@@ -52,15 +56,15 @@ export default function Home() {
           <h3 className="text-3xl font-bold text-center mb-12">Features</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="p-6 border rounded-lg">
-              <h4 className="text-xl font-semibold mb-4">📊 Multiple Methods</h4>
+              <h4 className="text-xl font-semibold mb-4">Multiple Methods</h4>
               <p>DCF, Comparable Transactions, Asset-based, and Multiples</p>
             </div>
             <div className="p-6 border rounded-lg">
-              <h4 className="text-xl font-semibold mb-4">🇰🇪 Kenya-Specific</h4>
+              <h4 className="text-xl font-semibold mb-4">Kenya-Specific</h4>
               <p>Sector data and risk adjustments for Kenyan market dynamics</p>
             </div>
             <div className="p-6 border rounded-lg">
-              <h4 className="text-xl font-semibold mb-4">📄 Reports</h4>
+              <h4 className="text-xl font-semibold mb-4">Reports</h4>
               <p>Generate professional PDF reports with full methodology</p>
             </div>
           </div>

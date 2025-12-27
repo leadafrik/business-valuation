@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { KENYAN_SECTOR_PROFILES } from "@/lib/valuation/sectorData";
+import { KENYAN_SECTOR_PROFILES, getWACC } from "@/lib/valuation/sectorData";
 
 const sectors = Object.keys(KENYAN_SECTOR_PROFILES);
+
+function formatPercent(rate: number) {
+  return Math.round(rate * 1000) / 10;
+}
 
 export default function NewValuation() {
   const { status } = useSession();
@@ -14,7 +18,6 @@ export default function NewValuation() {
   const [error, setError] = useState("");
   const [autoWACC, setAutoWACC] = useState(true);
   const [showWACCHelp, setShowWACCHelp] = useState(false);
-  const [showFCFHelper, setShowFCFHelper] = useState(false);
 
   const [formData, setFormData] = useState({
     businessName: "",
@@ -31,13 +34,8 @@ export default function NewValuation() {
     projectionYears: 5,
   });
 
-  // Get auto WACC based on sector
-  const getAutoWACC = () => {
-    const sectorData = KENYAN_SECTOR_PROFILES[formData.sector as keyof typeof KENYAN_SECTOR_PROFILES];
-    return sectorData ? Math.round(sectorData.baseDiscountRate * 100) : 20;
-  };
-
-  const discountRate = autoWACC ? getAutoWACC() : formData.discountRate;
+  const autoWACCDecimal = getWACC(formData.sector);
+  const autoWACCPercent = formatPercent(autoWACCDecimal);
 
   if (status === "unauthenticated") {
     router.push("/auth/signin");
@@ -75,9 +73,32 @@ export default function NewValuation() {
         return;
       }
 
-      // Route to assumption check page instead of direct calculation
-      const encodedData = encodeURIComponent(JSON.stringify(formData));
-      router.push(`/valuation/assumptions-check?data=${encodedData}`);
+      if (!autoWACC && formData.discountRate <= 0) {
+        setError("Discount rate must be greater than 0");
+        setIsLoading(false);
+        return;
+      }
+
+      const submitData = {
+        ...formData,
+        discountRate: autoWACC ? autoWACCDecimal : formData.discountRate / 100,
+      };
+
+      const res = await fetch("/api/valuations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(submitData),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Failed to calculate valuation");
+        setIsLoading(false);
+        return;
+      }
+
+      const result = await res.json();
+      router.push(`/valuation/${result.id}`);
     } catch (err) {
       setError("An error occurred. Please try again.");
       setIsLoading(false);
@@ -205,40 +226,7 @@ export default function NewValuation() {
                 <div>
                   <label className="block text-gray-700 font-semibold mb-2">
                     Free Cash Flow (KES)
-                    <button
-                      type="button"
-                      onClick={() => setShowFCFHelper(!showFCFHelper)}
-                      className="ml-2 text-blue-600 hover:underline text-sm"
-                    >
-                      💡 Don't know?
-                    </button>
                   </label>
-                  {showFCFHelper && (
-                    <div className="bg-blue-50 border border-blue-200 p-3 rounded mb-3">
-                      <p className="text-sm text-gray-700 mb-2">
-                        <strong>Quick Estimate:</strong> FCF ≈ Net Income × 0.8 (rough estimate)
-                      </p>
-                      {formData.netIncome > 0 && (
-                        <>
-                          <p className="text-sm text-gray-700 mb-2">
-                            <strong>Your estimate:</strong> KES {Math.round(formData.netIncome * 0.8).toLocaleString()}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                freeCashFlow: formData.netIncome * 0.8,
-                              }))
-                            }
-                            className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                          >
-                            Use This Estimate
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
                   <input
                     type="number"
                     name="freeCashFlow"
@@ -294,7 +282,7 @@ export default function NewValuation() {
                       onClick={() => setShowWACCHelp(!showWACCHelp)}
                       className="text-blue-600 hover:underline text-sm"
                     >
-                      💡 What is WACC?
+                      What is WACC?
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
@@ -314,14 +302,18 @@ export default function NewValuation() {
                 {showWACCHelp && (
                   <div className="bg-blue-100 border-l-4 border-blue-600 p-4 mb-4 rounded">
                     <p className="text-sm text-gray-700">
-                      <strong>WACC (Weighted Average Cost of Capital):</strong> The discount rate used to value a business. 
-                      It reflects the risk profile of your business based on the sector. Higher risk sectors have higher WACC.
+                      <strong>WACC (Weighted Average Cost of Capital):</strong>{" "}
+                      The discount rate used to value a business. It reflects the
+                      risk profile of your business based on the sector. Higher
+                      risk sectors have higher WACC.
                     </p>
                     <p className="text-sm text-gray-700 mt-2">
-                      <strong>Our estimate:</strong> {discountRate}% for {KENYAN_SECTOR_PROFILES[formData.sector].sector}
+                      <strong>Our estimate:</strong> {autoWACCPercent}% for{" "}
+                      {KENYAN_SECTOR_PROFILES[formData.sector].sector}
                     </p>
                     <p className="text-sm text-gray-700 mt-2">
-                      Enable "Auto Calculate" to use sector-specific rates, or enter your own based on your company's risk profile.
+                      Enable "Auto Calculate" to use sector-specific rates, or
+                      enter your own based on your company's risk profile.
                     </p>
                   </div>
                 )}
@@ -329,7 +321,8 @@ export default function NewValuation() {
                 {autoWACC ? (
                   <div className="p-3 bg-green-50 border border-green-200 rounded">
                     <p className="text-gray-700">
-                      <strong>Auto WACC:</strong> {discountRate}% (Sector: {KENYAN_SECTOR_PROFILES[formData.sector].sector})
+                      <strong>Auto WACC:</strong> {autoWACCPercent}% (Sector:{" "}
+                      {KENYAN_SECTOR_PROFILES[formData.sector].sector})
                     </p>
                   </div>
                 ) : (
@@ -340,6 +333,7 @@ export default function NewValuation() {
                     onChange={handleInputChange}
                     step="0.1"
                     min="0"
+                    max="100"
                     placeholder="Enter discount rate %"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
