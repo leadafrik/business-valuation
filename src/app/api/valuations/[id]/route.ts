@@ -32,7 +32,23 @@ export async function GET(
       return NextResponse.json({ error: "Valuation not found" }, { status: 404 });
     }
 
-    return NextResponse.json(valuation);
+    // Parse JSON fields
+    const scenarios = valuation.scenariosData
+      ? JSON.parse(valuation.scenariosData as string)
+      : {};
+    const valueDrivers = valuation.valueDriversData
+      ? JSON.parse(valuation.valueDriversData as string)
+      : [];
+
+    return NextResponse.json({
+      id: valuation.id,
+      businessName: valuation.businessName,
+      sector: valuation.sector,
+      finalValuation: valuation.valuationValue,
+      scenarios,
+      valueDrivers,
+      createdAt: valuation.createdAt,
+    });
   } catch (error) {
     console.error("Error fetching valuation:", error);
     return NextResponse.json(

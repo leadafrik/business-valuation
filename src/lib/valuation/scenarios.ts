@@ -5,14 +5,10 @@
 export interface ValuationScenario {
   name: string;
   perspective: string;
-  dcf: number;
-  comparable: number;
-  assetBased: number;
-  weighted: number;
+  weightedValue: number;
   assumptions: {
     wacc: number;
     terminalGrowth: number;
-    growthMultiplier: number;
   };
 }
 
@@ -25,72 +21,63 @@ export function calculateScenarios(
   baseTerminalGrowth: number
 ): Record<string, ValuationScenario> {
   // Conservative: Higher discount rate, lower growth
-  const conservativeWACC = baseWACC + 2;
-  const conservativeGrowth = baseTerminalGrowth - 0.01;
-  const conservativeMultiplier = 0.9; // 10% haircut on growth assumptions
+  const conservativeGrowth = Math.max(baseTerminalGrowth - 0.01, 0);
+  const conservativeMultiplier = 0.9; // 10% haircut
+
+  // Calculate conservative weighted value
+  const conservativeDCF = Math.max(dcfBase * conservativeMultiplier, 0);
+  const conservativeComparable = Math.max(comparableBase * 0.85, 0);
+  const conservativeWeighted = Math.round(
+    conservativeDCF * 0.4 + conservativeComparable * 0.2 + assetBase * 0.2
+  );
 
   const conservativeScenario: ValuationScenario = {
     name: 'Conservative',
-    perspective: 'Bank/Lender view - Lower risk tolerance',
-    dcf: Math.round(dcfBase * conservativeMultiplier),
-    comparable: Math.round(comparableBase * 0.85),
-    assetBased: assetBase,
-    weighted: 0,
+    perspective: 'Bank/Lender view',
+    weightedValue: conservativeWeighted,
     assumptions: {
-      wacc: conservativeWACC,
+      wacc: baseWACC + 0.02,
       terminalGrowth: conservativeGrowth,
-      growthMultiplier: conservativeMultiplier,
     },
   };
-  conservativeScenario.weighted = Math.round(
-    conservativeScenario.dcf * 0.4 +
-      conservativeScenario.comparable * 0.2 +
-      conservativeScenario.assetBased * 0.2
-  );
 
   // Base: Current assumptions
   const baseScenario: ValuationScenario = {
     name: 'Base Case',
-    perspective: 'Market view - Realistic assumptions',
-    dcf: dcfBase,
-    comparable: comparableBase,
-    assetBased: assetBase,
-    weighted: weightedBase,
+    perspective: 'Market view',
+    weightedValue: Math.round(weightedBase),
     assumptions: {
       wacc: baseWACC,
       terminalGrowth: baseTerminalGrowth,
-      growthMultiplier: 1.0,
     },
   };
 
-  // Upside: Lower discount rate, higher growth, strategic premium
-  const upscaleWACC = baseWACC - 1;
-  const upscaleGrowth = baseTerminalGrowth + 0.01;
-  const upscaleMultiplier = 1.15; // 15% uplift for growth + strategic premium
+  // Upside: Lower discount rate, higher growth
+  const upsideWACC = Math.max(baseWACC - 0.01, 0); // -1%
+  const upsideGrowth = baseTerminalGrowth + 0.01;
+  const upsideMultiplier = 1.15; // 15% uplift
 
-  const upscaleScenario: ValuationScenario = {
-    name: 'Upside Case',
-    perspective: 'Strategic buyer view - Growth + synergy potential',
-    dcf: Math.round(dcfBase * upscaleMultiplier),
-    comparable: Math.round(comparableBase * 1.25), // Strategic premium
-    assetBased: assetBase,
-    weighted: 0,
-    assumptions: {
-      wacc: upscaleWACC,
-      terminalGrowth: upscaleGrowth,
-      growthMultiplier: upscaleMultiplier,
-    },
-  };
-  upscaleScenario.weighted = Math.round(
-    upscaleScenario.dcf * 0.4 +
-      upscaleScenario.comparable * 0.2 +
-      upscaleScenario.assetBased * 0.2
+  // Calculate upside weighted value
+  const upsideDCF = Math.max(dcfBase * upsideMultiplier, 0);
+  const upsideComparable = Math.max(comparableBase * 1.25, 0);
+  const upsideWeighted = Math.round(
+    upsideDCF * 0.4 + upsideComparable * 0.2 + assetBase * 0.2
   );
+
+  const upsideScenario: ValuationScenario = {
+    name: 'Upside',
+    perspective: 'Strategic buyer view',
+    weightedValue: upsideWeighted,
+    assumptions: {
+      wacc: upsideWACC,
+      terminalGrowth: upsideGrowth,
+    },
+  };
 
   return {
     conservative: conservativeScenario,
     base: baseScenario,
-    upside: upscaleScenario,
+    upside: upsideScenario,
   };
 }
 
