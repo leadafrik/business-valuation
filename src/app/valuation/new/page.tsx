@@ -23,13 +23,13 @@ export default function NewValuation() {
     businessName: "",
     businessDescription: "",
     sector: "retail",
-    annualRevenue: 0,
-    ebitda: 0,
-    netIncome: 0,
-    freeCashFlow: 0,
-    totalAssets: 0,
-    totalLiabilities: 0,
-    discountRate: 0,
+    annualRevenue: "",
+    ebitda: "",
+    netIncome: "",
+    freeCashFlow: "",
+    totalAssets: "",
+    totalLiabilities: "",
+    discountRate: "",
     terminalGrowth: 0.04,
     projectionYears: 5,
   });
@@ -51,6 +51,8 @@ export default function NewValuation() {
       [name]:
         name === "businessDescription" || name === "sector" || name === "businessName"
           ? value
+          : value === ""
+          ? ""
           : parseFloat(value) || 0,
     }));
   };
@@ -67,21 +69,40 @@ export default function NewValuation() {
         return;
       }
 
-      if (formData.annualRevenue <= 0) {
+      const revenueValue = typeof formData.annualRevenue === "string" 
+        ? parseFloat(formData.annualRevenue) 
+        : formData.annualRevenue;
+
+      if (!revenueValue || revenueValue <= 0) {
         setError("Annual revenue must be greater than 0");
         setIsLoading(false);
         return;
       }
 
-      if (!autoWACC && formData.discountRate <= 0) {
+      const discountRateValue = typeof formData.discountRate === "string"
+        ? parseFloat(formData.discountRate)
+        : formData.discountRate;
+
+      if (!autoWACC && (!discountRateValue || discountRateValue <= 0)) {
         setError("Discount rate must be greater than 0");
         setIsLoading(false);
         return;
       }
 
+      // Convert all empty strings to 0 for submission
       const submitData = {
-        ...formData,
-        discountRate: autoWACC ? autoWACCDecimal : formData.discountRate / 100,
+        businessName: formData.businessName,
+        businessDescription: formData.businessDescription,
+        sector: formData.sector,
+        annualRevenue: typeof formData.annualRevenue === "string" ? parseFloat(formData.annualRevenue) : formData.annualRevenue,
+        ebitda: typeof formData.ebitda === "string" ? (formData.ebitda ? parseFloat(formData.ebitda) : 0) : formData.ebitda,
+        netIncome: typeof formData.netIncome === "string" ? (formData.netIncome ? parseFloat(formData.netIncome) : 0) : formData.netIncome,
+        freeCashFlow: typeof formData.freeCashFlow === "string" ? (formData.freeCashFlow ? parseFloat(formData.freeCashFlow) : 0) : formData.freeCashFlow,
+        totalAssets: typeof formData.totalAssets === "string" ? (formData.totalAssets ? parseFloat(formData.totalAssets) : 0) : formData.totalAssets,
+        totalLiabilities: typeof formData.totalLiabilities === "string" ? (formData.totalLiabilities ? parseFloat(formData.totalLiabilities) : 0) : formData.totalLiabilities,
+        discountRate: autoWACC ? autoWACCDecimal : (discountRateValue / 100),
+        terminalGrowth: formData.terminalGrowth,
+        projectionYears: formData.projectionYears,
       };
 
       const res = await fetch("/api/valuations", {
