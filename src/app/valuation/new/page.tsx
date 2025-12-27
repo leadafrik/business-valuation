@@ -130,21 +130,10 @@ export default function NewValuation() {
         projectionYears: formData.projectionYears,
       };
 
-      const res = await fetch("/api/valuations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(submitData),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Failed to calculate valuation");
-        setIsLoading(false);
-        return;
-      }
-
-      const result = await res.json();
-      router.push(`/valuation/${result.id}`);
+      // Navigate to assumptions check page with encoded form data
+      const encodedData = encodeURIComponent(JSON.stringify(submitData));
+      router.push(`/valuation/assumptions-check?data=${encodedData}`);
+      setIsLoading(false);
     } catch (err) {
       setError("An error occurred. Please try again.");
       setIsLoading(false);
