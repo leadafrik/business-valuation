@@ -34,6 +34,10 @@ function ResultsContent() {
   const router = useRouter();
   const [data, setData] = useState<ValuationResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [emailingSending, setEmailSending] = useState(false);
+  const [emailAddress, setEmailAddress] = useState('');
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -61,6 +65,56 @@ function ResultsContent() {
 
     fetchData();
   }, [searchParams, router]);
+
+  const handleDownloadPDF = async () => {
+    if (!data?.id) return;
+    setDownloading(true);
+    try {
+      const response = await fetch(`/api/valuations/${data.id}/download-pdf`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `valuation-${data.id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error('Failed to download PDF:', error);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleEmailPDF = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!data?.id || !emailAddress) return;
+
+    setEmailSending(true);
+    try {
+      const response = await fetch(`/api/valuations/${data.id}/email-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailAddress }),
+      });
+
+      if (response.ok) {
+        setShowEmailModal(false);
+        setEmailAddress('');
+        alert('PDF sent successfully!');
+      } else {
+        alert('Failed to send PDF');
+      }
+    } catch (error) {
+      console.error('Failed to email PDF:', error);
+      alert('Error sending PDF');
+    } finally {
+      setEmailSending(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -268,7 +322,7 @@ function ResultsContent() {
         <ul className="space-y-3 mb-6">
           <li className="flex items-start">
             <span className="mr-3 text-2xl">✓</span>
-            <span>Share this valuation with potential lenders or investors</span>
+            <span>Download or email this valuation to share with lenders or investors</span>
           </li>
           <li className="flex items-start">
             <span className="mr-3 text-2xl">✓</span>
@@ -280,20 +334,70 @@ function ResultsContent() {
           </li>
         </ul>
         <div className="flex gap-4 flex-wrap">
-          <Link
-            href="/valuation/new"
-            className="bg-white text-blue-600 hover:bg-blue-50 font-semibold px-6 py-2 rounded transition"
-          >
-            New Valuation
-          </Link>
           <button
-            onClick={() => window.print()}
+            onClick={handleDownloadPDF}
+            disabled={downloading}
+            className="bg-white text-blue-600 hover:bg-blue-50 font-semibold px-6 py-2 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {downloading ? 'Downloading...' : '📥 Download PDF'}
+          </button>
+          <button
+            onClick={() => setShowEmailModal(true)}
             className="bg-blue-500 hover:bg-blue-400 font-semibold px-6 py-2 rounded transition"
           >
-            Print / Save as PDF
+            ✉️ Email PDF
           </button>
+          <Link
+            href="/valuation/new"
+            className="bg-blue-500 hover:bg-blue-400 font-semibold px-6 py-2 rounded transition text-center"
+          >
+            ➕ New Valuation
+          </Link>
         </div>
       </div>
+
+      {/* Email Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-slate-900 mb-4">Email Valuation Report</h3>
+            <form onSubmit={handleEmailPDF} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-900 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={emailAddress}
+                  onChange={(e) => setEmailAddress(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="your@email.com"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={emailingSending}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 rounded-lg transition"
+                >
+                  {emailingSending ? 'Sending...' : 'Send PDF'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmailModal(false);
+                    setEmailAddress('');
+                  }}
+                  className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-900 font-semibold py-2 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="text-center text-sm text-slate-600 border-t border-slate-300 pt-8">
