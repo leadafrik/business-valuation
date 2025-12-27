@@ -14,6 +14,7 @@ export default function NewValuation() {
   const [error, setError] = useState("");
   const [autoWACC, setAutoWACC] = useState(true);
   const [showWACCHelp, setShowWACCHelp] = useState(false);
+  const [showFCFHelper, setShowFCFHelper] = useState(false);
 
   const [formData, setFormData] = useState({
     businessName: "",
@@ -74,27 +75,9 @@ export default function NewValuation() {
         return;
       }
 
-      // Use auto WACC if enabled, otherwise use manual
-      const submitData = {
-        ...formData,
-        discountRate: autoWACC ? getAutoWACC() : formData.discountRate,
-      };
-
-      const res = await fetch("/api/valuations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(submitData),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Failed to calculate valuation");
-        setIsLoading(false);
-        return;
-      }
-
-      const result = await res.json();
-      router.push(`/valuation/${result.id}`);
+      // Route to assumption check page instead of direct calculation
+      const encodedData = encodeURIComponent(JSON.stringify(formData));
+      router.push(`/valuation/assumptions-check?data=${encodedData}`);
     } catch (err) {
       setError("An error occurred. Please try again.");
       setIsLoading(false);
@@ -222,7 +205,40 @@ export default function NewValuation() {
                 <div>
                   <label className="block text-gray-700 font-semibold mb-2">
                     Free Cash Flow (KES)
+                    <button
+                      type="button"
+                      onClick={() => setShowFCFHelper(!showFCFHelper)}
+                      className="ml-2 text-blue-600 hover:underline text-sm"
+                    >
+                      💡 Don't know?
+                    </button>
                   </label>
+                  {showFCFHelper && (
+                    <div className="bg-blue-50 border border-blue-200 p-3 rounded mb-3">
+                      <p className="text-sm text-gray-700 mb-2">
+                        <strong>Quick Estimate:</strong> FCF ≈ Net Income × 0.8 (rough estimate)
+                      </p>
+                      {formData.netIncome > 0 && (
+                        <>
+                          <p className="text-sm text-gray-700 mb-2">
+                            <strong>Your estimate:</strong> KES {Math.round(formData.netIncome * 0.8).toLocaleString()}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                freeCashFlow: formData.netIncome * 0.8,
+                              }))
+                            }
+                            className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                          >
+                            Use This Estimate
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                   <input
                     type="number"
                     name="freeCashFlow"
