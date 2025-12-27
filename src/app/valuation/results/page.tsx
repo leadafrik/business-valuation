@@ -147,14 +147,14 @@ function ResultsContent() {
     }).format(value);
   };
 
-  const scenarios = data.scenarios;
-  const conservative = scenarios.conservative.weightedValue;
-  const base = scenarios.base.weightedValue;
-  const upside = scenarios.upside.weightedValue;
+  const scenarios = data.scenarios || {};
+  const conservative = scenarios.conservative?.weightedValue || 0;
+  const base = scenarios.base?.weightedValue || 0;
+  const upside = scenarios.upside?.weightedValue || 0;
 
-  const conservativeWACC = scenarios.conservative.assumptions.wacc;
-  const baseWACC = scenarios.base.assumptions.wacc;
-  const upsideWACC = scenarios.upside.assumptions.wacc;
+  const conservativeWACC = scenarios.conservative?.assumptions?.wacc || 0;
+  const baseWACC = scenarios.base?.assumptions?.wacc || 0;
+  const upsideWACC = scenarios.upside?.assumptions?.wacc || 0;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
@@ -264,7 +264,7 @@ function ResultsContent() {
           These sector-specific actions can materially increase your business value:
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {data.valueDrivers.map((driver, index) => (
+          {(data.valueDrivers || []).map((driver, index) => (
             <div key={index} className="border border-slate-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition">
               <div className="flex items-start justify-between">
                 <p className="font-semibold text-slate-900 flex-1">{driver.action}</p>
