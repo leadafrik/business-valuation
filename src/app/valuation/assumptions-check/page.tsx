@@ -13,11 +13,11 @@ function AssumptionCheckForm() {
   const formData = formDataStr ? JSON.parse(decodeURIComponent(formDataStr)) : {};
 
   const [assumptions, setAssumptions] = useState({
-    terminalGrowthCheck: '',
+    terminalGrowthCheck: 'moderate',
     growthYear1: 5,
     growthYear2: 5,
     growthYear3to5: 4,
-    fcfConfirm: true,
+    fcfConfirm: false,
     riskFactors: [] as string[],
   });
 
@@ -50,6 +50,12 @@ function AssumptionCheckForm() {
     // Validate terminal growth
     if (!assumptions.terminalGrowthCheck) {
       setError('Please answer the terminal growth question');
+      return;
+    }
+
+    // Validate FCF confirmation
+    if (!assumptions.fcfConfirm) {
+      setError('Please confirm that the FCF estimate is realistic for your business');
       return;
     }
 

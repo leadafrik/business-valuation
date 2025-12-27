@@ -27,8 +27,9 @@ export function calculateScenarios(
   // Calculate conservative weighted value
   const conservativeDCF = Math.max(dcfBase * conservativeMultiplier, 0);
   const conservativeComparable = Math.max(comparableBase * 0.85, 0);
+  const conservativeAsset = Math.max(assetBase * 0.85, 0);
   const conservativeWeighted = Math.round(
-    conservativeDCF * 0.4 + conservativeComparable * 0.2 + assetBase * 0.2
+    conservativeDCF * 0.4 + conservativeComparable * 0.3 + conservativeAsset * 0.3
   );
 
   const conservativeScenario: ValuationScenario = {
@@ -60,8 +61,9 @@ export function calculateScenarios(
   // Calculate upside weighted value
   const upsideDCF = Math.max(dcfBase * upsideMultiplier, 0);
   const upsideComparable = Math.max(comparableBase * 1.25, 0);
+  const upsideAsset = Math.max(assetBase * 1.1, 0);
   const upsideWeighted = Math.round(
-    upsideDCF * 0.4 + upsideComparable * 0.2 + assetBase * 0.2
+    upsideDCF * 0.4 + upsideComparable * 0.3 + upsideAsset * 0.3
   );
 
   const upsideScenario: ValuationScenario = {

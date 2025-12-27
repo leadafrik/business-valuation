@@ -25,13 +25,13 @@ export default function NewValuation() {
     businessName: "",
     businessDescription: "",
     sector: "retail",
-    annualRevenue: "",
-    ebitda: "",
-    netIncome: "",
-    freeCashFlow: "",
-    totalAssets: "",
-    totalLiabilities: "",
-    discountRate: "",
+    annualRevenue: 0,
+    ebitda: 0,
+    netIncome: 0,
+    freeCashFlow: 0,
+    totalAssets: 0,
+    totalLiabilities: 0,
+    discountRate: 0,
     terminalGrowth: 0.04,
     projectionYears: 5,
   });
@@ -54,16 +54,14 @@ export default function NewValuation() {
         name === "businessDescription" || name === "sector" || name === "businessName"
           ? value
           : value === ""
-          ? ""
+          ? 0
           : parseFloat(value) || 0,
     }));
   };
 
   const handleEstimateFCF = () => {
     // Estimate FCF as NetIncome × 80% (conservative estimate)
-    const netIncomeValue = typeof formData.netIncome === "string" 
-      ? parseFloat(formData.netIncome) 
-      : formData.netIncome;
+    const netIncomeValue = formData.netIncome as number;
     
     if (netIncomeValue && netIncomeValue > 0) {
       const estimated = netIncomeValue * 0.8;
@@ -94,9 +92,7 @@ export default function NewValuation() {
         return;
       }
 
-      const revenueValue = typeof formData.annualRevenue === "string" 
-        ? parseFloat(formData.annualRevenue) 
-        : formData.annualRevenue;
+      const revenueValue = formData.annualRevenue as number;
 
       if (!revenueValue || revenueValue <= 0) {
         setError("Annual revenue must be greater than 0");
@@ -104,9 +100,7 @@ export default function NewValuation() {
         return;
       }
 
-      const discountRateValue = typeof formData.discountRate === "string"
-        ? parseFloat(formData.discountRate)
-        : formData.discountRate;
+      const discountRateValue = formData.discountRate as number;
 
       if (!autoWACC && (!discountRateValue || discountRateValue <= 0)) {
         setError("Discount rate must be greater than 0");
@@ -114,17 +108,17 @@ export default function NewValuation() {
         return;
       }
 
-      // Convert all empty strings to 0 for submission
+      // All form data is already normalized to numbers
       const submitData = {
         businessName: formData.businessName,
         businessDescription: formData.businessDescription,
         sector: formData.sector,
-        annualRevenue: typeof formData.annualRevenue === "string" ? parseFloat(formData.annualRevenue) : formData.annualRevenue,
-        ebitda: typeof formData.ebitda === "string" ? (formData.ebitda ? parseFloat(formData.ebitda) : 0) : formData.ebitda,
-        netIncome: typeof formData.netIncome === "string" ? (formData.netIncome ? parseFloat(formData.netIncome) : 0) : formData.netIncome,
-        freeCashFlow: typeof formData.freeCashFlow === "string" ? (formData.freeCashFlow ? parseFloat(formData.freeCashFlow) : 0) : formData.freeCashFlow,
-        totalAssets: typeof formData.totalAssets === "string" ? (formData.totalAssets ? parseFloat(formData.totalAssets) : 0) : formData.totalAssets,
-        totalLiabilities: typeof formData.totalLiabilities === "string" ? (formData.totalLiabilities ? parseFloat(formData.totalLiabilities) : 0) : formData.totalLiabilities,
+        annualRevenue: formData.annualRevenue as number,
+        ebitda: formData.ebitda as number,
+        netIncome: formData.netIncome as number,
+        freeCashFlow: formData.freeCashFlow as number,
+        totalAssets: formData.totalAssets as number,
+        totalLiabilities: formData.totalLiabilities as number,
         discountRate: autoWACC ? autoWACCDecimal : (discountRateValue / 100),
         terminalGrowth: formData.terminalGrowth,
         projectionYears: formData.projectionYears,
@@ -448,9 +442,7 @@ export default function NewValuation() {
                   <div>
                     <p className="text-gray-700 font-semibold mb-2">Net Income:</p>
                     <p className="text-lg text-blue-600 font-bold">
-                      {typeof formData.netIncome === "string" && formData.netIncome
-                        ? `KES ${parseFloat(formData.netIncome).toLocaleString()}`
-                        : typeof formData.netIncome === "number" && (formData.netIncome as number) > 0
+                      {(formData.netIncome as number) > 0
                         ? `KES ${(formData.netIncome as number).toLocaleString()}`
                         : "Not provided"}
                     </p>
@@ -475,11 +467,7 @@ export default function NewValuation() {
                   <button
                     type="button"
                     onClick={handleEstimateFCF}
-                    disabled={
-                      typeof formData.netIncome === "string"
-                        ? !formData.netIncome || parseFloat(formData.netIncome) <= 0
-                        : formData.netIncome <= 0
-                    }
+                    disabled={(formData.netIncome as number) <= 0}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 rounded-lg transition"
                   >
                     Calculate Estimate

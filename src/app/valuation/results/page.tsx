@@ -138,6 +138,9 @@ function ResultsContent() {
     );
   }
 
+  // Safely handle sector data
+  const sectorDisplay = data.sector ? data.sector.charAt(0).toUpperCase() + data.sector.slice(1) : 'Unknown';
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-KE', {
       style: 'currency',
@@ -152,9 +155,9 @@ function ResultsContent() {
   const base = scenarios.base?.weightedValue || 0;
   const upside = scenarios.upside?.weightedValue || 0;
 
-  const conservativeWACC = scenarios.conservative?.assumptions?.wacc || 0;
-  const baseWACC = scenarios.base?.assumptions?.wacc || 0;
-  const upsideWACC = scenarios.upside?.assumptions?.wacc || 0;
+  const conservativeWACC = scenarios.conservative?.assumptions?.wacc ?? 0;
+  const baseWACC = scenarios.base?.assumptions?.wacc ?? 0;
+  const upsideWACC = scenarios.upside?.assumptions?.wacc ?? 0;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
@@ -162,7 +165,7 @@ function ResultsContent() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-900">Valuation Results</h1>
         <p className="text-slate-600 mt-2">
-          Business Valuation Assessment for {data.sector.charAt(0).toUpperCase() + data.sector.slice(1)} Sector
+          Business Valuation Assessment for {sectorDisplay} Sector
         </p>
       </div>
 
@@ -263,21 +266,25 @@ function ResultsContent() {
         <p className="text-slate-600 mb-6">
           These sector-specific actions can materially increase your business value:
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(data.valueDrivers || []).map((driver, index) => (
-            <div key={index} className="border border-slate-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition">
-              <div className="flex items-start justify-between">
-                <p className="font-semibold text-slate-900 flex-1">{driver.action}</p>
-                <div className="ml-4 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-bold whitespace-nowrap">
-                  +{driver.impact}%
+        {data.valueDrivers && data.valueDrivers.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {data.valueDrivers.map((driver, index) => (
+              <div key={index} className="border border-slate-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition">
+                <div className="flex items-start justify-between">
+                  <p className="font-semibold text-slate-900 flex-1">{driver.action}</p>
+                  <div className="ml-4 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-bold whitespace-nowrap">
+                    +{driver.impact}%
+                  </div>
                 </div>
+                <p className="text-xs text-slate-600 mt-2">
+                  Estimated impact on enterprise value
+                </p>
               </div>
-              <p className="text-xs text-slate-600 mt-2">
-                Estimated impact on enterprise value
-              </p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-slate-600 italic">No sector-specific value drivers available</p>
+        )}
       </div>
 
       {/* Sensitivity Analysis */}
