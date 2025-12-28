@@ -169,6 +169,30 @@ function ResultsContent() {
         </p>
       </div>
 
+      {/* Recommended Valuation Banner */}
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg shadow-xl p-8 mb-8 text-white border-2 border-purple-400">
+        <div className="flex items-baseline justify-between mb-2">
+          <div>
+            <p className="text-sm font-semibold opacity-90 mb-1">YOUR RECOMMENDED VALUATION</p>
+            <p className="text-5xl font-bold">
+              {formatCurrency((conservative + base * 2 + upside) / 4)}
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="bg-white bg-opacity-20 px-4 py-2 rounded-lg backdrop-blur">
+              <p className="text-sm opacity-90">Weighted Fair Value</p>
+              <p className="text-xl font-bold">Range:</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 pt-4 border-t border-white border-opacity-30">
+          <p className="text-sm opacity-90 mb-3">Valuation Range: {formatCurrency(conservative)} – {formatCurrency(upside)}</p>
+          <p className="text-sm">
+            This is your <span className="font-semibold">target asking price</span> for negotiations. Base case (weighted 50%) is most reliable. Use conservative for lenders, upside for investors.
+          </p>
+        </div>
+      </div>
+
       {/* 3-Scenario Display */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Conservative Scenario */}

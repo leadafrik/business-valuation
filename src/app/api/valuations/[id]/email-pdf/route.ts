@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import PDFDocument from "pdfkit";
+import { generatePDF } from "@/lib/pdfGenerator";
 import nodemailer from "nodemailer";
 import { checkRateLimit, getResetTime } from "@/lib/rateLimit";
 
@@ -15,127 +15,6 @@ const transporter = process.env.SMTP_HOST ? nodemailer.createTransport({
     pass: process.env.SMTP_PASS,
   },
 }) : null;
-
-async function generatePDF(valuation: any, scenarios: any, valueDrivers: any) {
-  const doc = new PDFDocument();
-  const chunks: Buffer[] = [];
-
-  doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-
-  // Build PDF content
-  doc
-    .fontSize(24)
-    .font("Helvetica-Bold")
-    .text("Business Valuation Report", { align: "center" })
-    .moveDown();
-
-  doc
-    .fontSize(12)
-    .font("Helvetica")
-    .text(`Business: ${valuation.businessName}`, { align: "left" })
-    .text(`Sector: ${valuation.sector}`, { align: "left" })
-    .text(
-      `Date: ${new Date(valuation.createdAt).toLocaleDateString()}`,
-      { align: "left" }
-    )
-    .moveDown();
-
-  // Scenarios section
-  doc
-    .fontSize(16)
-    .font("Helvetica-Bold")
-    .text("Valuation Scenarios")
-    .moveDown(0.5);
-
-  const conservative = scenarios.conservative?.weightedValue || 0;
-  const base = scenarios.base?.weightedValue || 0;
-  const upside = scenarios.upside?.weightedValue || 0;
-
-  doc.fontSize(11).font("Helvetica");
-  doc.text(`Conservative (Bank View): KES ${conservative.toLocaleString()}`);
-  doc.text(
-    `Base Case (Market View): KES ${base.toLocaleString()}`,
-    { underline: true }
-  );
-  doc.text(`Upside (Buyer View): KES ${upside.toLocaleString()}`);
-  doc.moveDown();
-
-  // WACC Info
-  const conservativeWACC = scenarios.conservative?.assumptions?.wacc || 0;
-  const baseWACC = scenarios.base?.assumptions?.wacc || 0;
-  const upsideWACC = scenarios.upside?.assumptions?.wacc || 0;
-
-  doc.text(`Conservative WACC: ${(conservativeWACC * 100).toFixed(1)}%`);
-  doc.text(`Base WACC: ${(baseWACC * 100).toFixed(1)}%`);
-  doc.text(`Upside WACC: ${(upsideWACC * 100).toFixed(1)}%`);
-  doc.moveDown();
-
-  // Financial Inputs
-  doc.fontSize(16).font("Helvetica-Bold").text("Financial Inputs");
-  doc.fontSize(11).font("Helvetica").moveDown(0.5);
-  doc.text(
-    `Annual Revenue: KES ${valuation.annualRevenue.toLocaleString()}`
-  );
-  if (valuation.ebitda)
-    doc.text(`EBITDA: KES ${valuation.ebitda.toLocaleString()}`);
-  if (valuation.netIncome)
-    doc.text(`Net Income: KES ${valuation.netIncome.toLocaleString()}`);
-  if (valuation.freeCashFlow)
-    doc.text(
-      `Free Cash Flow: KES ${valuation.freeCashFlow.toLocaleString()}`
-    );
-  doc.moveDown();
-
-  // Value Drivers
-  if (valueDrivers.length > 0) {
-    doc
-      .fontSize(16)
-      .font("Helvetica-Bold")
-      .text("Value Drivers: How to Increase Valuation")
-      .moveDown(0.5);
-
-    doc.fontSize(10).font("Helvetica");
-    valueDrivers.forEach((driver: any, index: number) => {
-      doc.text(
-        `${index + 1}. ${driver.action} (+${driver.impact}%)`
-      );
-    });
-    doc.moveDown();
-  }
-
-  // Assumptions section
-  doc
-    .fontSize(14)
-    .font("Helvetica-Bold")
-    .text("Assumptions")
-    .moveDown(0.5);
-
-  doc
-    .fontSize(10)
-    .font("Helvetica")
-    .text(
-      `Terminal Growth Rate: ${(valuation.terminalGrowth! * 100).toFixed(1)}%`
-    )
-    .text(`Projection Years: ${valuation.projectionYears}`)
-    .moveDown();
-
-  // Footer
-  doc
-    .fontSize(8)
-    .font("Helvetica")
-    .text(
-      "This valuation is based on the financial inputs and assumptions provided. It represents a best estimate based on sector data and market conditions.",
-      { align: "center" }
-    );
-
-  doc.end();
-
-  return new Promise<Buffer>((resolve) => {
-    doc.on("end", () => {
-      resolve(Buffer.concat(chunks));
-    });
-  });
-}
 
 export async function POST(
   req: Request,
@@ -160,8 +39,8 @@ export async function POST(
     // Check SMTP configuration
     if (!transporter) {
       return NextResponse.json(
-        { error: "Email service is not configured" },
-        { status: 500 }
+        { error: "Email service is not configured. Please contact administrator." },
+        { status: 503 }
       );
     }
 
@@ -196,7 +75,7 @@ export async function POST(
       );
     }
 
-    const scenarios_parsed = (() => {
+    const scenarios = (() => {
       try {
         return valuation.scenariosData
           ? typeof valuation.scenariosData === 'string'
@@ -209,7 +88,7 @@ export async function POST(
       }
     })();
     
-    const valueDrivers_parsed = (() => {
+    const valueDrivers = (() => {
       try {
         return valuation.valueDriversData
           ? typeof valuation.valueDriversData === 'string'
@@ -222,8 +101,21 @@ export async function POST(
       }
     })();
 
-    // Generate PDF
-    const pdfBuffer = await generatePDF(valuation, scenarios_parsed, valueDrivers_parsed);
+    // Generate professional PDF
+    const pdfBuffer = await generatePDF({
+      businessName: valuation.businessName || "Unknown Business",
+      sector: valuation.sector || "unknown",
+      createdAt: valuation.createdAt,
+      annualRevenue: valuation.annualRevenue,
+      ebitda: valuation.ebitda || undefined,
+      netIncome: valuation.netIncome || undefined,
+      freeCashFlow: valuation.freeCashFlow || undefined,
+      totalAssets: valuation.totalAssets || undefined,
+      terminalGrowth: valuation.terminalGrowth || 0.03,
+      projectionYears: valuation.projectionYears || 5,
+      scenarios,
+      valueDrivers,
+    });
 
     // Send email with PDF attachment
     await transporter.sendMail({
@@ -236,16 +128,16 @@ export async function POST(
         <p>Please find attached your valuation report for <strong>${valuation.businessName}</strong>.</p>
         <p><strong>Valuation Summary:</strong></p>
         <ul>
-          <li>Conservative (Bank View): KES ${scenarios_parsed.conservative?.weightedValue?.toLocaleString() || 0}</li>
-          <li>Base Case (Market View): KES ${scenarios_parsed.base?.weightedValue?.toLocaleString() || 0}</li>
-          <li>Upside (Buyer View): KES ${scenarios_parsed.upside?.weightedValue?.toLocaleString() || 0}</li>
+          <li>Conservative (Bank View): KES ${Math.round(scenarios.conservative?.weightedValue || 0).toLocaleString()}</li>
+          <li>Base Case (Market View): KES ${Math.round(scenarios.base?.weightedValue || 0).toLocaleString()}</li>
+          <li>Upside (Buyer View): KES ${Math.round(scenarios.upside?.weightedValue || 0).toLocaleString()}</li>
         </ul>
-        <p>Use these valuations for fundraising, lending, or strategic decisions.</p>
-        <p>Best regards,<br/>Business Valuation Tool</p>
+        <p>Use the <strong>Base Case</strong> for fundraising, <strong>Conservative</strong> for lending, and <strong>Upside</strong> for strategic buyer discussions.</p>
+        <p>Best regards,<br/><strong>Business Valuation Tool for Kenya</strong></p>
       `,
       attachments: [
         {
-          filename: `valuation-${params.id}.pdf`,
+          filename: `valuation-${valuation.businessName}-${new Date().toISOString().split('T')[0]}.pdf`,
           content: pdfBuffer,
           contentType: "application/pdf",
         },
@@ -259,7 +151,7 @@ export async function POST(
   } catch (error) {
     console.error("Error emailing PDF:", error);
     return NextResponse.json(
-      { error: "Failed to email valuation report" },
+      { error: "Failed to email valuation report", details: String(error) },
       { status: 500 }
     );
   }
