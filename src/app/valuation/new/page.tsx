@@ -25,16 +25,22 @@ export default function NewValuation() {
     businessName: "",
     businessDescription: "",
     sector: "retail",
-    annualRevenue: 0,
-    ebitda: 0,
-    netIncome: 0,
-    freeCashFlow: 0,
-    totalAssets: 0,
-    totalLiabilities: 0,
-    discountRate: 0,
+    annualRevenue: "",
+    ebitda: "",
+    netIncome: "",
+    freeCashFlow: "",
+    totalAssets: "",
+    totalLiabilities: "",
+    discountRate: "",
     terminalGrowth: 0.04,
     projectionYears: 5,
   });
+
+  // Helper to safely convert form string values to numbers
+  const getNumericValue = (val: string | number): number => {
+    const parsed = typeof val === 'string' ? parseFloat(val) : val;
+    return isNaN(parsed) ? 0 : parsed;
+  };
 
   const autoWACCDecimal = getWACC(formData.sector);
   const autoWACCPercent = formatPercent(autoWACCDecimal);
@@ -53,17 +59,15 @@ export default function NewValuation() {
       [name]:
         name === "businessDescription" || name === "sector" || name === "businessName"
           ? value
-          : value === ""
-          ? 0
-          : parseFloat(value) || 0,
+          : value, // Keep numeric inputs as strings for display (empty string = no value)
     }));
   };
 
   const handleEstimateFCF = () => {
     // Estimate FCF as NetIncome × 80% (conservative estimate)
-    const netIncomeValue = formData.netIncome as number;
+    const netIncomeValue = getNumericValue(formData.netIncome);
     
-    if (netIncomeValue && netIncomeValue > 0) {
+    if (netIncomeValue > 0) {
       const estimated = netIncomeValue * 0.8;
       setEstimatedFCF(estimated);
     }
@@ -92,33 +96,33 @@ export default function NewValuation() {
         return;
       }
 
-      const revenueValue = formData.annualRevenue as number;
+      const revenueValue = getNumericValue(formData.annualRevenue);
 
-      if (!revenueValue || revenueValue <= 0) {
+      if (revenueValue <= 0) {
         setError("Annual revenue must be greater than 0");
         setIsLoading(false);
         return;
       }
 
-      const discountRateValue = formData.discountRate as number;
+      const discountRateValue = getNumericValue(formData.discountRate);
 
-      if (!autoWACC && (!discountRateValue || discountRateValue <= 0)) {
+      if (!autoWACC && discountRateValue <= 0) {
         setError("Discount rate must be greater than 0");
         setIsLoading(false);
         return;
       }
 
-      // All form data is already normalized to numbers
+      // Convert string form values to numbers for submission
       const submitData = {
         businessName: formData.businessName,
         businessDescription: formData.businessDescription,
         sector: formData.sector,
-        annualRevenue: formData.annualRevenue as number,
-        ebitda: formData.ebitda as number,
-        netIncome: formData.netIncome as number,
-        freeCashFlow: formData.freeCashFlow as number,
-        totalAssets: formData.totalAssets as number,
-        totalLiabilities: formData.totalLiabilities as number,
+        annualRevenue: revenueValue,
+        ebitda: getNumericValue(formData.ebitda),
+        netIncome: getNumericValue(formData.netIncome),
+        freeCashFlow: getNumericValue(formData.freeCashFlow),
+        totalAssets: getNumericValue(formData.totalAssets),
+        totalLiabilities: getNumericValue(formData.totalLiabilities),
         discountRate: autoWACC ? autoWACCDecimal : (discountRateValue / 100),
         terminalGrowth: formData.terminalGrowth,
         projectionYears: formData.projectionYears,
@@ -219,6 +223,7 @@ export default function NewValuation() {
                   <input
                     type="number"
                     name="annualRevenue"
+                    placeholder="e.g., 50000000"
                     value={formData.annualRevenue}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -233,6 +238,7 @@ export default function NewValuation() {
                   <input
                     type="number"
                     name="ebitda"
+                    placeholder="e.g., 7500000"
                     value={formData.ebitda}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -246,6 +252,7 @@ export default function NewValuation() {
                   <input
                     type="number"
                     name="netIncome"
+                    placeholder="e.g., 5000000"
                     value={formData.netIncome}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -260,6 +267,7 @@ export default function NewValuation() {
                     <input
                       type="number"
                       name="freeCashFlow"
+                      placeholder="e.g., 4000000"
                       value={formData.freeCashFlow}
                       onChange={handleInputChange}
                       className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -281,6 +289,7 @@ export default function NewValuation() {
                   <input
                     type="number"
                     name="totalAssets"
+                    placeholder="e.g., 25000000"
                     value={formData.totalAssets}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -294,6 +303,7 @@ export default function NewValuation() {
                   <input
                     type="number"
                     name="totalLiabilities"
+                    placeholder="e.g., 10000000"
                     value={formData.totalLiabilities}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -442,8 +452,8 @@ export default function NewValuation() {
                   <div>
                     <p className="text-gray-700 font-semibold mb-2">Net Income:</p>
                     <p className="text-lg text-blue-600 font-bold">
-                      {(formData.netIncome as number) > 0
-                        ? `KES ${(formData.netIncome as number).toLocaleString()}`
+                      {getNumericValue(formData.netIncome) > 0
+                        ? `KES ${getNumericValue(formData.netIncome).toLocaleString()}`
                         : "Not provided"}
                     </p>
                   </div>
@@ -467,7 +477,7 @@ export default function NewValuation() {
                   <button
                     type="button"
                     onClick={handleEstimateFCF}
-                    disabled={(formData.netIncome as number) <= 0}
+                    disabled={getNumericValue(formData.netIncome) <= 0}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 rounded-lg transition"
                   >
                     Calculate Estimate
