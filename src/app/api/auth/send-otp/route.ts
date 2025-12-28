@@ -1,16 +1,24 @@
 import { prisma } from '@/lib/prisma';
 import { sendOTPEmail, generateOTP, getOTPExpiry } from '@/lib/email';
+import { SendOTPSchema, safeParseRequest } from '@/lib/validation';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { checkRateLimit, getResetTime } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json();
-
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    const body = await req.json();
+    
+    // Validate request body with Zod schema
+    const validation = safeParseRequest(SendOTPSchema, body);
+    if (!validation.success || !validation.data) {
+      return NextResponse.json(
+        { error: `Validation error: ${validation.error}` },
+        { status: 400 }
+      );
     }
+
+    const email = validation.data.email;
 
     // Rate limiting: max 3 OTP requests per email per 15 minutes
     if (!checkRateLimit(`otp:${email}`, 3, 15 * 60 * 1000)) {
@@ -26,11 +34,14 @@ export async function POST(req: NextRequest) {
       where: { email },
     });
 
+    // Don't reveal whether email exists (prevents user enumeration)
+    // Just continue if user exists but not verified, or if new user
     if (existingUser && existingUser.emailVerified) {
-      return NextResponse.json(
-        { error: 'Email already registered' },
-        { status: 400 }
-      );
+      // Return success response to not leak account existence
+      return NextResponse.json({
+        success: true,
+        message: 'OTP sent to your email',
+      });
     }
 
     // Generate OTP
@@ -60,8 +71,14 @@ export async function POST(req: NextRequest) {
     const emailSent = await sendOTPEmail(email, otp);
 
     if (!emailSent) {
+      console.error(`Failed to send OTP email to ${email}`);
+      // In production, return server error; in dev, email will be logged to console
       return NextResponse.json(
-        { error: 'Failed to send OTP email' },
+        { 
+          error: process.env.NODE_ENV === 'production' 
+            ? 'Email service is not available. Please contact support.'
+            : 'Failed to send OTP email. Check server logs.'
+        },
         { status: 500 }
       );
     }

@@ -3,9 +3,10 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import PDFDocument from "pdfkit";
 import nodemailer from "nodemailer";
+import { checkRateLimit, getResetTime } from "@/lib/rateLimit";
 
-// Create email transporter (reuse from OTP service)
-const transporter = nodemailer.createTransport({
+// Create email transporter only if SMTP is configured
+const transporter = process.env.SMTP_HOST ? nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT || "587"),
   secure: process.env.SMTP_SECURE === "true",
@@ -13,7 +14,7 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
-});
+}) : null;
 
 async function generatePDF(valuation: any, scenarios: any, valueDrivers: any) {
   const doc = new PDFDocument();
@@ -153,6 +154,23 @@ export async function POST(
       return NextResponse.json(
         { error: "Email is required" },
         { status: 400 }
+      );
+    }
+
+    // Check SMTP configuration
+    if (!transporter) {
+      return NextResponse.json(
+        { error: "Email service is not configured" },
+        { status: 500 }
+      );
+    }
+
+    // Rate limiting: max 5 PDF emails per user per 1 hour
+    if (!checkRateLimit(`pdf-email:${session.user.email}`, 5, 60 * 60 * 1000)) {
+      const resetTime = getResetTime(`pdf-email:${session.user.email}`);
+      return NextResponse.json(
+        { error: `Too many PDF email requests. Please try again in ${resetTime} seconds.` },
+        { status: 429 }
       );
     }
 

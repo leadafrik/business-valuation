@@ -1,19 +1,43 @@
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { VerifyOTPSchema, SignupSchema, safeParseRequest } from '@/lib/validation';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { checkRateLimit, getResetTime } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, otp, password, name } = await req.json();
+    const body = await req.json();
 
-    if (!email || !otp || !password || !name) {
+    // Validate OTP verification fields
+    const otpValidation = safeParseRequest(VerifyOTPSchema, {
+      email: body.email,
+      otp: body.otp,
+    });
+    if (!otpValidation.success || !otpValidation.data) {
       return NextResponse.json(
-        { error: 'Email, OTP, password, and name are required' },
+        { error: `Validation error: ${otpValidation.error}` },
         { status: 400 }
       );
     }
+
+    // Validate signup fields
+    const signupValidation = safeParseRequest(SignupSchema, {
+      email: body.email,
+      password: body.password,
+      businessName: body.name,
+    });
+    if (!signupValidation.success || !signupValidation.data) {
+      return NextResponse.json(
+        { error: `Validation error: ${signupValidation.error}` },
+        { status: 400 }
+      );
+    }
+
+    const email = otpValidation.data.email;
+    const otp = otpValidation.data.otp;
+    const password = signupValidation.data.password;
+    const businessName = signupValidation.data.businessName;
 
     // Rate limiting: prevent brute force OTP verification (max 5 attempts per 15 minutes)
     if (!checkRateLimit(`verify:${email}`, 5, 15 * 60 * 1000)) {
@@ -68,7 +92,7 @@ export async function POST(req: NextRequest) {
       where: { email },
       data: {
         password: hashedPassword,
-        name,
+        name: businessName,
         emailVerified: new Date(),
         otp: null,
         otpExpiresAt: null,

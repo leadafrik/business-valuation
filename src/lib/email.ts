@@ -1,17 +1,54 @@
 import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 
 // Consolidated SMTP configuration - supports both SMTP_* and EMAIL_* env vars for backward compatibility
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || process.env.EMAIL_HOST,
-  port: parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || '587'),
-  secure: (process.env.SMTP_SECURE || 'false').toLowerCase() === 'true',
-  auth: {
-    user: process.env.SMTP_USER || process.env.EMAIL_USER,
-    pass: process.env.SMTP_PASS || process.env.EMAIL_PASS,
-  },
-});
+let transporter: any = null;
+
+// Initialize transporter only if email config is available
+if (process.env.SMTP_HOST || process.env.EMAIL_HOST) {
+  transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || process.env.EMAIL_HOST,
+    port: parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || '587'),
+    secure: (process.env.SMTP_SECURE || 'false').toLowerCase() === 'true',
+    auth: {
+      user: process.env.SMTP_USER || process.env.EMAIL_USER,
+      pass: process.env.SMTP_PASS || process.env.EMAIL_PASS,
+    },
+  });
+} else {
+  // Log warning if email is not configured
+  console.warn('Email configuration not found. OTP emails will not be sent.');
+}
+
+/**
+ * Generate a cryptographically secure OTP code
+ * Uses crypto.randomInt instead of Math.random for better security
+ */
+export function generateOTP(): string {
+  // Generate 6-digit OTP using crypto for better randomness
+  const otp = crypto.randomInt(100000, 999999).toString();
+  return otp;
+}
 
 export async function sendOTPEmail(email: string, otp: string) {
+  // If email is not configured, log to console in development mode
+  if (!transporter) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`\n${'='.repeat(60)}`);
+      console.log('📧 OTP EMAIL (Development Mode - Not Actually Sent)');
+      console.log(`${'='.repeat(60)}`);
+      console.log(`To: ${email}`);
+      console.log(`Subject: Your ValueKE OTP Code`);
+      console.log(`OTP Code: ${otp}`);
+      console.log(`Valid for: 10 minutes`);
+      console.log(`${'='.repeat(60)}\n`);
+      return true; // Pretend it was sent in dev mode
+    } else {
+      console.error('Email service is not configured. Please set SMTP_HOST or EMAIL_HOST environment variables.');
+      return false;
+    }
+  }
+
   try {
     await transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@valueke.com',
@@ -34,10 +71,6 @@ export async function sendOTPEmail(email: string, otp: string) {
     console.error('Failed to send OTP email:', error);
     return false;
   }
-}
-
-export function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 export function getOTPExpiry(): Date {

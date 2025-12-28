@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { ValuationInputSchema, safeParseRequest } from "@/lib/validation";
 import { calculateDCF, estimateFCF } from "@/lib/valuation/dcf";
 import {
   calculateComparableValuation,
@@ -22,10 +23,20 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    
+    // Validate request body with Zod schema
+    const validation = safeParseRequest(ValuationInputSchema, body);
+    if (!validation.success || !validation.data) {
+      return NextResponse.json(
+        { error: `Validation error: ${validation.error}` },
+        { status: 400 }
+      );
+    }
+
     // Log only non-sensitive fields to prevent PII exposure
     console.log("Valuation calculation started for:", {
-      sector: body.sector,
-      businessName: body.businessName ? "[REDACTED]" : "[MISSING]",
+      sector: validation.data.sector,
+      businessName: validation.data.businessName ? "[REDACTED]" : "[MISSING]",
       timestamp: new Date().toISOString(),
     });
     
@@ -40,9 +51,9 @@ export async function POST(req: NextRequest) {
       totalAssets,
       totalLiabilities,
       discountRate,
-      terminalGrowth = 0.04,
+      terminalGrowthRate = 0.04,
       projectionYears = 5,
-    } = body;
+    } = validation.data;
 
     // Get user
     const user = await prisma.user.findUnique({
@@ -67,7 +78,7 @@ export async function POST(req: NextRequest) {
       totalAssets,
       totalLiabilities,
       discountRate: normalizedDiscountRate || getWACC(sector),
-      terminalGrowth,
+      terminalGrowth: terminalGrowthRate,
       projectionYears,
     };
 
@@ -76,14 +87,14 @@ export async function POST(req: NextRequest) {
     const wacc = normalizedDiscountRate || getWACC(sector);
     
     // Validate DCF assumptions before calculations
-    if (terminalGrowth >= wacc) {
+    if (terminalGrowthRate >= wacc) {
       return NextResponse.json(
         { error: "Terminal growth rate must be less than discount rate" },
         { status: 400 }
       );
     }
     
-    if (terminalGrowth < 0 || terminalGrowth > 0.05) {
+    if (terminalGrowthRate < 0 || terminalGrowthRate > 0.05) {
       return NextResponse.json(
         { error: "Terminal growth rate should be between 0% and 5%" },
         { status: 400 }
@@ -111,7 +122,7 @@ export async function POST(req: NextRequest) {
           growthRate,
           discountRate: wacc,
           projectionYears,
-          terminalGrowth,
+          terminalGrowth: terminalGrowthRate,
         });
 
         results.push({
@@ -122,7 +133,7 @@ export async function POST(req: NextRequest) {
             growthRate,
             discountRate: wacc,
             projectionYears,
-            terminalGrowth,
+            terminalGrowth: terminalGrowthRate,
           },
         });
       } catch (error) {
@@ -241,7 +252,7 @@ export async function POST(req: NextRequest) {
       assetValue,
       finalValuation,
       wacc,
-      terminalGrowth
+      terminalGrowthRate
     );
 
     // Get value drivers for this sector
@@ -261,7 +272,7 @@ export async function POST(req: NextRequest) {
         totalAssets,
         totalLiabilities,
         discountRate: wacc,
-        terminalGrowth,
+        terminalGrowth: terminalGrowthRate,
         projectionYears,
         valuationType: "multiple",
         valuationValue: finalValuation,
