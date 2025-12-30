@@ -1,19 +1,16 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const { data: session } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (session) {
-      router.push("/dashboard");
-    }
-  }, [session, router]);
+    // TEMPORARY: Bypass auth - redirect directly to dashboard
+    router.push("/valuation/new");
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800">
@@ -21,13 +18,10 @@ export default function Home() {
       <nav className="flex justify-between items-center p-6 container">
         <h1 className="text-2xl font-bold text-white">ValuateKE</h1>
         <div className="space-x-4">
-          <Link href="/auth/signin" className="text-white hover:text-blue-200">
-            Sign In
-          </Link>
-          <Link
-            href="/auth/signup"
-            className="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-50"
-          >
+          {/* Auth buttons hidden - temporarily bypassing auth */}
+          <span className="text-white text-sm">(Auth Temporarily Disabled)</span>
+        </div>
+      </nav>
             Sign Up
           </Link>
         </div>

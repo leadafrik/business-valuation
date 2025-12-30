@@ -45,9 +45,10 @@ export default function NewValuation() {
   const autoWACCDecimal = getWACC(formData.sector);
   const autoWACCPercent = formatPercent(autoWACCDecimal);
 
-  if (status === "unauthenticated") {
-    router.push("/auth/signin");
-    return null;
+  // TEMPORARY: Auth check disabled for development
+  // if (status === "unauthenticated") {
+  //   router.push("/auth/signin");
+  //   return null;
   }
 
   const handleInputChange = (

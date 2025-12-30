@@ -8,14 +8,15 @@ export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  if (status === "unauthenticated") {
-    router.push("/auth/signin");
-    return null;
-  }
+  // TEMPORARY: Auth check disabled for development
+  // if (status === "unauthenticated") {
+  //   router.push("/auth/signin");
+  //   return null;
+  // }
 
-  if (status === "loading") {
-    return <div className="text-center py-10">Loading...</div>;
-  }
+  // if (status === "loading") {
+  //   return <div className="text-center py-10">Loading...</div>;
+  // }
 
   return (
     <div className="min-h-screen bg-gray-50">
