@@ -88,8 +88,9 @@ function AssumptionCheckForm() {
     const enrichedData = {
       ...formData,
       discountRate: finalWACC / 100, // Convert percentage to decimal (21.5 -> 0.215)
-      terminalGrowth:
+      terminalGrowthRate:
         assumptions.terminalGrowthCheck === 'conservative' ? 0.025 : 0.04,
+      projectionYears: 5, // Default 5-year projection
       projectedGrowthRates: [
         assumptions.growthYear1,
         assumptions.growthYear2,
