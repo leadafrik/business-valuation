@@ -56,10 +56,8 @@ function AssumptionCheckForm() {
       : 0;
   const leverageAdjustment = leverageRatio > 50 ? 2 : leverageRatio > 30 ? 1 : 0;
   const riskAdjustment = assumptions.riskFactors.length * 0.5;
-  // Use submitted WACC as base if provided, apply adjustments only if risk factors selected
-  const finalWACC = submittedWACC !== null && assumptions.riskFactors.length === 0 
-    ? submittedWACC 
-    : Math.round((baseWACC + leverageAdjustment + riskAdjustment) * 10) / 10;
+  // Calculate final WACC by adding leverage and risk adjustments to base WACC
+  const finalWACC = Math.round((baseWACC + leverageAdjustment + riskAdjustment) * 10) / 10;
 
   const handleRiskFactorToggle = (factor: string) => {
     setAssumptions((prev) => ({
