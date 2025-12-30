@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { KENYAN_SECTOR_PROFILES, getWACC } from "@/lib/valuation/sectorData";
 
@@ -12,7 +11,6 @@ function formatPercent(rate: number) {
 }
 
 export default function NewValuation() {
-  const { status } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -49,7 +47,7 @@ export default function NewValuation() {
   // if (status === "unauthenticated") {
   //   router.push("/auth/signin");
   //   return null;
-  }
+  // }
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
