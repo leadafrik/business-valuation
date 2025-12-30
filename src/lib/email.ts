@@ -6,6 +6,12 @@ let transporter: any = null;
 
 // Initialize transporter only if email config is available
 if (process.env.SMTP_HOST || process.env.EMAIL_HOST) {
+  console.log('[EMAIL] Initializing email transporter...');
+  console.log(`[EMAIL] SMTP Host: ${process.env.SMTP_HOST || process.env.EMAIL_HOST}`);
+  console.log(`[EMAIL] SMTP Port: ${process.env.SMTP_PORT || process.env.EMAIL_PORT || '587'}`);
+  console.log(`[EMAIL] SMTP Secure: ${process.env.SMTP_SECURE || 'false'}`);
+  console.log(`[EMAIL] SMTP User: ${process.env.SMTP_USER ? process.env.SMTP_USER.substring(0, 5) + '...' : 'not set'}`);
+  
   transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || process.env.EMAIL_HOST,
     port: parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || '587'),
@@ -15,9 +21,11 @@ if (process.env.SMTP_HOST || process.env.EMAIL_HOST) {
       pass: process.env.SMTP_PASS || process.env.EMAIL_PASS,
     },
   });
+  
+  console.log('[EMAIL] Transporter initialized successfully');
 } else {
   // Log warning if email is not configured
-  console.warn('Email configuration not found. OTP emails will not be sent.');
+  console.warn('[EMAIL] Email configuration not found. OTP emails will not be sent.');
 }
 
 /**
@@ -44,12 +52,13 @@ export async function sendOTPEmail(email: string, otp: string) {
       console.log(`${'='.repeat(60)}\n`);
       return true; // Pretend it was sent in dev mode
     } else {
-      console.error('Email service is not configured. Please set SMTP_HOST or EMAIL_HOST environment variables.');
+      console.error('[EMAIL] Email service is not configured. Please set SMTP_HOST or EMAIL_HOST environment variables.');
       return false;
     }
   }
 
   try {
+    console.log(`[EMAIL] Sending OTP to ${email}...`);
     await transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@valueke.com',
       to: email,
@@ -66,9 +75,10 @@ export async function sendOTPEmail(email: string, otp: string) {
         </div>
       `,
     });
+    console.log(`[EMAIL] OTP sent successfully to ${email}`);
     return true;
   } catch (error) {
-    console.error('Failed to send OTP email:', error);
+    console.error(`[EMAIL] Failed to send OTP email to ${email}:`, error);
     return false;
   }
 }

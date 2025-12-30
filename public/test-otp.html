@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Send OTP</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        input { padding: 10px; margin: 10px 0; width: 300px; }
+        button { padding: 10px 20px; background: #0066cc; color: white; border: none; cursor: pointer; }
+        #response { margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Test Send OTP API</h1>
+    <input type="email" id="email" placeholder="Enter email" value="testuser@example.com">
+    <button onclick="sendOTP()">Send OTP</button>
+    <div id="response"></div>
+    
+    <script>
+        async function sendOTP() {
+            const email = document.getElementById('email').value;
+            const responseDiv = document.getElementById('response');
+            
+            responseDiv.innerHTML = '<p>Sending OTP...</p>';
+            
+            try {
+                const res = await fetch('/api/auth/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email }),
+                });
+                
+                const data = await res.json();
+                
+                responseDiv.innerHTML = `
+                    <p><strong>Status:</strong> ${res.status}</p>
+                    <p><strong>Response:</strong></p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (err) {
+                responseDiv.innerHTML = `<p><strong>Error:</strong> ${err.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

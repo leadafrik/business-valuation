@@ -48,49 +48,61 @@ export async function POST(req: NextRequest) {
     const otp = generateOTP();
     const otpExpiry = getOTPExpiry();
     
+    console.log(`[OTP] Generated OTP for ${email}: ${otp}`);
+    
     // Hash OTP before storing (never store plaintext OTPs)
     const hashedOTP = crypto.createHash('sha256').update(otp).digest('hex');
 
     // Create or update user with hashed OTP and attempt tracking
-    await prisma.user.upsert({
-      where: { email },
-      update: {
-        otp: hashedOTP,
-        otpExpiresAt: otpExpiry,
-        otpAttempts: 0, // Reset attempts on new OTP
-      },
-      create: {
-        email,
-        otp: hashedOTP,
-        otpExpiresAt: otpExpiry,
-        otpAttempts: 0,
-      },
-    });
+    try {
+      await prisma.user.upsert({
+        where: { email },
+        update: {
+          otp: hashedOTP,
+          otpExpiresAt: otpExpiry,
+          otpAttempts: 0, // Reset attempts on new OTP
+        },
+        create: {
+          email,
+          otp: hashedOTP,
+          otpExpiresAt: otpExpiry,
+          otpAttempts: 0,
+        },
+      });
+      console.log(`[OTP] User record upserted for ${email}`);
+    } catch (dbError) {
+      console.error(`[OTP] Database error for ${email}:`, dbError);
+      return NextResponse.json(
+        { error: 'Failed to process request. Please try again.' },
+        { status: 500 }
+      );
+    }
 
     // Send OTP email
     const emailSent = await sendOTPEmail(email, otp);
 
     if (!emailSent) {
-      console.error(`Failed to send OTP email to ${email}`);
+      console.error(`[OTP] Failed to send OTP email to ${email}`);
       // In production, return server error; in dev, email will be logged to console
       return NextResponse.json(
         { 
           error: process.env.NODE_ENV === 'production' 
             ? 'Email service is not available. Please contact support.'
-            : 'Failed to send OTP email. Check server logs.'
+            : 'OTP sent, but email delivery failed. Check server logs for the code.'
         },
         { status: 500 }
       );
     }
 
+    console.log(`[OTP] Successfully sent OTP email to ${email}`);
     return NextResponse.json({
       success: true,
       message: 'OTP sent to your email',
     });
   } catch (error) {
-    console.error('Send OTP error:', error);
+    console.error('[OTP] Send OTP error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error. Please try again.' },
       { status: 500 }
     );
   }

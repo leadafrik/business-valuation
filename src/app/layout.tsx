@@ -5,6 +5,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Business Valuation Kenya",
   description: "Value your SME with professional valuation methods",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
