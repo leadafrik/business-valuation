@@ -30,10 +30,10 @@ export const ValuationInputSchema = z.object({
   bookValueOfEquity: z.number().nonnegative('Book value of equity must be non-negative').optional(),
   marketCapitalization: z.number().optional(),
   numberOfShares: z.number().optional(),
-  // Scenario weights
-  conservativeWeight: z.number().min(0).max(1),
-  baseWeight: z.number().min(0).max(1),
-  upSideWeight: z.number().min(0).max(1),
+  // Scenario weights (optional - defaults will be used if not provided)
+  conservativeWeight: z.number().min(0).max(1).optional().default(0.3),
+  baseWeight: z.number().min(0).max(1).optional().default(0.5),
+  upSideWeight: z.number().min(0).max(1).optional().default(0.2),
   // DCF parameters
   terminalGrowthRate: z.number().min(0).max(5, 'Terminal growth must be between 0-5%').optional(),
   discountRate: z.number().min(0).max(100, 'Discount rate must be between 0-100%'),
