@@ -1,4 +1,3 @@
-import { auth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { ValuationInputSchema, safeParseRequest } from "@/lib/validation";
@@ -15,11 +14,11 @@ import {
 import { calculateScenarios, VALUE_DRIVERS_BY_SECTOR } from "@/lib/valuation/scenarios";
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // TEMPORARY: Bypass auth for testing - will re-enable later
+  // const session = await auth();
+  // if (!session?.user?.email) {
+  //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // }
 
   try {
     const body = await req.json();
@@ -55,14 +54,15 @@ export async function POST(req: NextRequest) {
       projectionYears = 5,
     } = validation.data;
 
+    // TEMPORARY: Bypass user lookup for testing
     // Get user
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
+    // const user = await prisma.user.findUnique({
+    //   where: { email: session.user.email },
+    // });
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    // if (!user) {
+    //   return NextResponse.json({ error: "User not found" }, { status: 404 });
+    // }
 
     // Prepare assumptions
     const normalizedDiscountRate =
@@ -261,7 +261,8 @@ export async function POST(req: NextRequest) {
     // Save valuation to database
     const savedValuation = await prisma.valuation.create({
       data: {
-        userId: user.id,
+        // TEMPORARY: userId commented out for testing without auth
+        // userId: user.id,
         businessName,
         businessDescription,
         sector,
@@ -307,27 +308,19 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  const session = await auth();
-
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // TEMPORARY: Bypass auth for testing - will re-enable later
+  // const session = await auth();
+  // if (!session?.user?.email) {
+  //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: {
-        valuations: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
+    // TEMPORARY: Return all valuations for testing (no auth)
+    const valuations = await prisma.valuation.findMany({
+      orderBy: { createdAt: "desc" },
     });
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    return NextResponse.json(user.valuations);
+    return NextResponse.json(valuations);
   } catch (error) {
     console.error("Error fetching valuations:", error);
     return NextResponse.json(

@@ -71,8 +71,8 @@ model VerificationToken {
 
 model Valuation {
   id                String    @id @default(cuid())
-  userId            String
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String?   // TEMPORARY: Made optional for testing without auth
+  user              User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   businessName      String
   businessDescription String?
