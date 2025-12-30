@@ -45,7 +45,9 @@ function AssumptionCheckForm() {
   });
 
   const sector = formData.sector ? KENYAN_SECTOR_PROFILES[formData.sector] : undefined;
-  const baseWACC = sector ? sector.baseDiscountRate * 100 : 20;
+  // Use the submitted discount rate if available, otherwise use sector base rate
+  const submittedWACC = formData.discountRate ? formData.discountRate * 100 : null;
+  const baseWACC = submittedWACC !== null ? submittedWACC : (sector ? sector.baseDiscountRate * 100 : 20);
 
   // Calculate risk adjustment from leverage
   const leverageRatio =
@@ -54,7 +56,10 @@ function AssumptionCheckForm() {
       : 0;
   const leverageAdjustment = leverageRatio > 50 ? 2 : leverageRatio > 30 ? 1 : 0;
   const riskAdjustment = assumptions.riskFactors.length * 0.5;
-  const finalWACC = Math.round((baseWACC + leverageAdjustment + riskAdjustment) * 10) / 10;
+  // Use submitted WACC as base if provided, apply adjustments only if risk factors selected
+  const finalWACC = submittedWACC !== null && assumptions.riskFactors.length === 0 
+    ? submittedWACC 
+    : Math.round((baseWACC + leverageAdjustment + riskAdjustment) * 10) / 10;
 
   const handleRiskFactorToggle = (factor: string) => {
     setAssumptions((prev) => ({
