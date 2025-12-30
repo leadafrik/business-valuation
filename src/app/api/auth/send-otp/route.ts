@@ -83,12 +83,9 @@ export async function POST(req: NextRequest) {
 
     if (!emailSent) {
       console.error(`[OTP] Failed to send OTP email to ${email}`);
-      // In production, return server error; in dev, email will be logged to console
       return NextResponse.json(
         { 
-          error: process.env.NODE_ENV === 'production' 
-            ? 'Email service is not available. Please contact support.'
-            : 'OTP sent, but email delivery failed. Check server logs for the code.'
+          error: 'Unable to send OTP. Please check your email configuration and try again.'
         },
         { status: 500 }
       );

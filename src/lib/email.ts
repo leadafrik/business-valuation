@@ -3,29 +3,38 @@ import crypto from 'crypto';
 
 // Consolidated SMTP configuration - supports both SMTP_* and EMAIL_* env vars for backward compatibility
 let transporter: any = null;
+let emailConfigured = false;
 
 // Initialize transporter only if email config is available
 if (process.env.SMTP_HOST || process.env.EMAIL_HOST) {
-  console.log('[EMAIL] Initializing email transporter...');
-  console.log(`[EMAIL] SMTP Host: ${process.env.SMTP_HOST || process.env.EMAIL_HOST}`);
-  console.log(`[EMAIL] SMTP Port: ${process.env.SMTP_PORT || process.env.EMAIL_PORT || '587'}`);
-  console.log(`[EMAIL] SMTP Secure: ${process.env.SMTP_SECURE || 'false'}`);
-  console.log(`[EMAIL] SMTP User: ${process.env.SMTP_USER ? process.env.SMTP_USER.substring(0, 5) + '...' : 'not set'}`);
-  
-  transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || process.env.EMAIL_HOST,
-    port: parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || '587'),
-    secure: (process.env.SMTP_SECURE || 'false').toLowerCase() === 'true',
-    auth: {
-      user: process.env.SMTP_USER || process.env.EMAIL_USER,
-      pass: process.env.SMTP_PASS || process.env.EMAIL_PASS,
-    },
-  });
-  
-  console.log('[EMAIL] Transporter initialized successfully');
+  try {
+    const smtpHost = process.env.SMTP_HOST || process.env.EMAIL_HOST;
+    const smtpPort = parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || '587');
+    const smtpSecure = (process.env.SMTP_SECURE || 'false').toLowerCase() === 'true';
+    const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+    const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+    
+    if (!smtpUser || !smtpPass) {
+      throw new Error('SMTP credentials (user/pass) are required but not provided');
+    }
+
+    transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    });
+
+    emailConfigured = true;
+    console.log(`[EMAIL] ✓ Email transporter initialized for ${smtpHost}:${smtpPort}`);
+  } catch (error) {
+    console.error('[EMAIL] ✗ Failed to initialize email transporter:', error instanceof Error ? error.message : error);
+  }
 } else {
-  // Log warning if email is not configured
-  console.warn('[EMAIL] Email configuration not found. OTP emails will not be sent.');
+  console.error('[EMAIL] ✗ SMTP configuration not found. Set SMTP_HOST, SMTP_USER, and SMTP_PASS environment variables.');
 }
 
 /**
@@ -39,46 +48,57 @@ export function generateOTP(): string {
 }
 
 export async function sendOTPEmail(email: string, otp: string) {
-  // If email is not configured, log to console in development mode
-  if (!transporter) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`\n${'='.repeat(60)}`);
-      console.log('📧 OTP EMAIL (Development Mode - Not Actually Sent)');
-      console.log(`${'='.repeat(60)}`);
-      console.log(`To: ${email}`);
-      console.log(`Subject: Your ValueKE OTP Code`);
-      console.log(`OTP Code: ${otp}`);
-      console.log(`Valid for: 10 minutes`);
-      console.log(`${'='.repeat(60)}\n`);
-      return true; // Pretend it was sent in dev mode
-    } else {
-      console.error('[EMAIL] Email service is not configured. Please set SMTP_HOST or EMAIL_HOST environment variables.');
-      return false;
-    }
+  if (!emailConfigured || !transporter) {
+    console.error(`[EMAIL] ✗ Email service not configured. Cannot send OTP to ${email}`);
+    return false;
   }
 
   try {
     console.log(`[EMAIL] Sending OTP to ${email}...`);
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || process.env.EMAIL_FROM || 'noreply@valueke.com',
+    
+    const mailOptions = {
+      from: process.env.SMTP_FROM || process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@valueke.com',
       to: email,
       subject: 'Your ValueKE OTP Code',
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">Welcome to ValueKE</h2>
-          <p>Your OTP verification code is:</p>
-          <h1 style="background: #f0f0f0; padding: 20px; text-align: center; letter-spacing: 5px; font-size: 32px; color: #007bff;">
-            ${otp}
-          </h1>
-          <p style="color: #666;">This code expires in 10 minutes.</p>
-          <p style="color: #999; font-size: 12px;">If you didn't request this, please ignore this email.</p>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #0066cc; margin: 0;">ValueKE</h1>
+            <p style="color: #666; margin: 5px 0 0 0;">Business Valuation Platform</p>
+          </div>
+          
+          <div style="background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 8px; padding: 30px; text-align: center;">
+            <h2 style="color: #333; margin: 0 0 20px 0; font-size: 24px;">Verify Your Email</h2>
+            <p style="color: #666; margin: 0 0 30px 0; font-size: 16px;">Your one-time password (OTP) is:</p>
+            
+            <div style="background: #0066cc; color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p style="font-size: 40px; font-weight: bold; letter-spacing: 5px; margin: 0; font-family: 'Courier New', monospace;">
+                ${otp}
+              </p>
+            </div>
+            
+            <p style="color: #999; font-size: 14px; margin: 20px 0 0 0;">This code expires in 10 minutes</p>
+          </div>
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+            <p style="color: #999; font-size: 12px; margin: 0;">
+              If you didn't request this code, please ignore this email or contact support if you have concerns about your account security.
+            </p>
+            <p style="color: #999; font-size: 12px; margin: 10px 0 0 0;">
+              © 2025 ValueKE. All rights reserved.
+            </p>
+          </div>
         </div>
       `,
-    });
-    console.log(`[EMAIL] OTP sent successfully to ${email}`);
+      text: `Your ValueKE verification code is: ${otp}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this, please ignore this email.`,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[EMAIL] ✓ OTP sent successfully to ${email} (Message ID: ${info.messageId})`);
     return true;
   } catch (error) {
-    console.error(`[EMAIL] Failed to send OTP email to ${email}:`, error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[EMAIL] ✗ Failed to send OTP to ${email}:`, errorMessage);
     return false;
   }
 }
