@@ -7,6 +7,8 @@ import {
   getManagementPropertyWhere,
   isManagementRole,
 } from "@/lib/access";
+import { createAuditLog } from "@/lib/audit";
+import { createNotification } from "@/lib/notifications";
 
 // GET /api/tenants
 export async function GET(req: NextRequest) {
@@ -164,7 +166,12 @@ export async function POST(req: NextRequest) {
       data: { status: "ACTIVE" },
     });
 
-    return { tenancy };
+    return {
+      tenancy,
+      tenantUserId: user.id,
+      propertyName: unit.property.name,
+      unitNumber: unit.unitNumber,
+    };
   }).catch((error: unknown) => {
     const message =
       error instanceof Error ? error.message : "Failed to add tenant.";
@@ -174,6 +181,31 @@ export async function POST(req: NextRequest) {
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 409 });
   }
+
+  await Promise.all([
+    createNotification({
+      userId: result.tenantUserId,
+      type: "TENANT_INVITE",
+      title: "Your tenancy is ready",
+      body: `You have been added to Unit ${result.unitNumber} at ${result.propertyName}.`,
+      metadata: {
+        tenancyId: result.tenancy.id,
+        inviteToken,
+      },
+    }),
+    createAuditLog({
+      userId: session.user.id,
+      action: "TENANT_ADDED",
+      entityType: "Tenancy",
+      entityId: result.tenancy.id,
+      metadata: {
+        unitId,
+        unitNumber: result.unitNumber,
+        propertyName: result.propertyName,
+        tenantUserId: result.tenantUserId,
+      },
+    }),
+  ]);
 
   return NextResponse.json({ tenancy: result.tenancy, inviteToken }, { status: 201 });
 }

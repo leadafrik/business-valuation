@@ -117,6 +117,22 @@ enum NotificationType {
   ANNOUNCEMENT
   TENANT_INVITE
   LEASE_EXPIRY
+  TENANT_MESSAGE
+  LISTING_INQUIRY
+  LISTING_MESSAGE
+}
+
+enum ListingStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum InquiryStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CLOSED
 }
 
 // ─── Auth (NextAuth compatible) ───────────────────────────────────────────────
@@ -155,6 +171,11 @@ model User {
   notifications Notification[]
   auditLogs     AuditLog[]
   apiKeys       ApiKey[]
+  createdListings PropertyListing[] @relation("CreatedListings")
+  listingInquiries ListingInquiry[] @relation("InquiryUser")
+  inquiryMessages InquiryMessage[]  @relation("InquirySender")
+  createdConversations TenantConversation[] @relation("ConversationCreator")
+  conversationMessages TenantConversationMessage[] @relation("ConversationSender")
 
   @@map("users")
 }
@@ -222,6 +243,7 @@ model Property {
   admins        PropertyAdmin[]
   announcements Announcement[]
   documents     Document[]   @relation("PropertyDocuments")
+  listings      PropertyListing[]
 
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
@@ -262,6 +284,7 @@ model Unit {
   tenancies      Tenancy[]
   payments       Payment[]
   tickets        MaintenanceTicket[]
+  listings       PropertyListing[] @relation("UnitListings")
 
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -291,6 +314,8 @@ model TenantProfile {
 
   tenancies        Tenancy[]
   documents        Document[]   @relation("TenantDocuments")
+  listingInquiries ListingInquiry[] @relation("InquiryTenant")
+  conversations    TenantConversation[]
 
   @@map("tenant_profiles")
 }
@@ -314,6 +339,7 @@ model Tenancy {
   activeForUnit   Unit?   @relation("ActiveTenancy", fields: [activeForUnitId], references: [id])
 
   payments    Payment[]
+  conversations TenantConversation[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -445,6 +471,100 @@ model Document {
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────
+
+model PropertyListing {
+  id            String        @id @default(cuid())
+  propertyId    String
+  property      Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  unitId        String?
+  unit          Unit?         @relation("UnitListings", fields: [unitId], references: [id], onDelete: SetNull)
+  createdById   String
+  createdBy     User          @relation("CreatedListings", fields: [createdById], references: [id], onDelete: Cascade)
+  title         String
+  slug          String        @unique
+  summary       String
+  description   String        @db.Text
+  monthlyRent   Float
+  depositAmount Float?
+  bedrooms      Int?
+  bathrooms     Int?
+  sqft          Float?
+  photos        String[]
+  status        ListingStatus @default(DRAFT)
+  publishedAt   DateTime?
+  inquiries     ListingInquiry[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([propertyId, status])
+  @@map("property_listings")
+}
+
+model ListingInquiry {
+  id              String          @id @default(cuid())
+  listingId       String
+  listing         PropertyListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?           @relation("InquiryUser", fields: [userId], references: [id], onDelete: SetNull)
+  tenantProfileId String?
+  tenantProfile   TenantProfile?  @relation("InquiryTenant", fields: [tenantProfileId], references: [id], onDelete: SetNull)
+  name            String
+  email           String?
+  phone           String?
+  status          InquiryStatus   @default(NEW)
+  messages        InquiryMessage[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([listingId, status])
+  @@map("listing_inquiries")
+}
+
+model InquiryMessage {
+  id          String         @id @default(cuid())
+  inquiryId   String
+  inquiry     ListingInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  senderId    String?
+  sender      User?          @relation("InquirySender", fields: [senderId], references: [id], onDelete: SetNull)
+  senderLabel String
+  body        String         @db.Text
+  createdAt   DateTime       @default(now())
+
+  @@index([inquiryId, createdAt])
+  @@map("inquiry_messages")
+}
+
+model TenantConversation {
+  id            String                     @id @default(cuid())
+  tenancyId     String
+  tenancy       Tenancy                    @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  tenantId      String
+  tenant        TenantProfile              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdById   String
+  createdBy     User                       @relation("ConversationCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  subject       String
+  lastMessageAt DateTime                   @default(now())
+  messages      TenantConversationMessage[]
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+
+  @@index([tenancyId, lastMessageAt])
+  @@index([tenantId, lastMessageAt])
+  @@map("tenant_conversations")
+}
+
+model TenantConversationMessage {
+  id             String             @id @default(cuid())
+  conversationId String
+  conversation   TenantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User               @relation("ConversationSender", fields: [senderId], references: [id], onDelete: Cascade)
+  body           String             @db.Text
+  createdAt      DateTime           @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("tenant_conversation_messages")
+}
 
 model Notification {
   id        String              @id @default(cuid())

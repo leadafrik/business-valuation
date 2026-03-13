@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getManagementPropertyWhere, isManagementRole } from "@/lib/access";
+import { createAuditLog } from "@/lib/audit";
 
 // GET /api/properties – list all properties for current landlord/admin
 export async function GET(req: NextRequest) {
@@ -66,6 +67,19 @@ export async function POST(req: NextRequest) {
       description,
       amenities,
       ownerId: session.user.id,
+    },
+  });
+
+  await createAuditLog({
+    userId: session.user.id,
+    action: "PROPERTY_CREATED",
+    entityType: "Property",
+    entityId: property.id,
+    metadata: {
+      name: property.name,
+      code: property.code,
+      city: property.city,
+      type: property.type,
     },
   });
 

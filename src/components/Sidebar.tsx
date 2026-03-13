@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   LogOut,
   Megaphone,
+  MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
@@ -29,6 +30,7 @@ const landlordNav = [
   { href: "/tenants", label: "Tenants", icon: Users },
   { href: "/payments", label: "Payments", icon: CreditCard },
   { href: "/tickets", label: "Maintenance", icon: Wrench },
+  { href: "/messages", label: "Messages", icon: MessageSquare },
   { href: "/announcements", label: "Announcements", icon: Megaphone },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/documents", label: "Documents", icon: FileText },
@@ -39,6 +41,7 @@ const landlordNav = [
 const tenantNav = [
   { href: "/tenant/dashboard", label: "My Home", icon: Home },
   { href: "/tenant/pay", label: "Pay Rent", icon: CreditCard },
+  { href: "/tenant/messages", label: "Messages", icon: MessageSquare },
   { href: "/tenant/tickets", label: "Maintenance", icon: Wrench },
   { href: "/tenant/notices", label: "Notices", icon: BellRing },
   { href: "/tenant/documents", label: "Documents", icon: FileText },

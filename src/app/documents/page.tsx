@@ -25,6 +25,7 @@ interface Document {
   tenantId: string | null;
   uploadedBy: string;
   createdAt: string;
+  expiresAt?: string | null;
   property?: { name: string } | null;
   tenant?: { user: { name: string | null } } | null;
 }
@@ -67,7 +68,7 @@ export default function DocumentsPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [uploading, setUploading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadForm, setUploadForm] = useState({ name: "", type: "other" });
+  const [uploadForm, setUploadForm] = useState({ name: "", type: "other", expiresAt: "" });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -97,12 +98,15 @@ export default function DocumentsPage() {
       formData.append("file", selectedFile);
       formData.append("name", uploadForm.name || selectedFile.name);
       formData.append("type", uploadForm.type);
+      if (uploadForm.expiresAt) {
+        formData.append("expiresAt", uploadForm.expiresAt);
+      }
 
       const res = await fetch("/api/documents", { method: "POST", body: formData });
       if (res.ok) {
         setShowUploadModal(false);
         setSelectedFile(null);
-        setUploadForm({ name: "", type: "other" });
+        setUploadForm({ name: "", type: "other", expiresAt: "" });
         fetchDocs();
       }
     } finally {
@@ -341,6 +345,20 @@ export default function DocumentsPage() {
                   ))}
                 </select>
               </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-[var(--rf-slate)]">
+                  Expiry date
+                </label>
+                <input
+                  type="date"
+                  value={uploadForm.expiresAt}
+                  onChange={(e) =>
+                    setUploadForm({ ...uploadForm, expiresAt: e.target.value })
+                  }
+                  className="w-full rounded-2xl border border-[rgba(93,112,127,0.2)] px-3 py-2.5 text-sm text-[var(--rf-navy)] outline-none transition focus:border-[rgba(46,125,50,0.34)] focus:ring-4 focus:ring-[rgba(46,125,50,0.08)]"
+                />
+              </div>
             </div>
 
             <div className="mt-6 flex gap-3">
@@ -348,6 +366,7 @@ export default function DocumentsPage() {
                 onClick={() => {
                   setShowUploadModal(false);
                   setSelectedFile(null);
+                  setUploadForm({ name: "", type: "other", expiresAt: "" });
                 }}
                 className="flex-1 rounded-2xl border border-[rgba(93,112,127,0.2)] px-4 py-2.5 text-sm font-medium text-[var(--rf-slate)] transition hover:bg-[rgba(93,112,127,0.06)]"
               >
@@ -370,6 +389,19 @@ export default function DocumentsPage() {
 }
 
 function DocRow({ doc, onDelete }: { doc: Document; onDelete: (id: string) => void }) {
+  const expiresAt = doc.expiresAt ? new Date(doc.expiresAt) : null;
+  const daysUntilExpiry = expiresAt
+    ? Math.ceil((expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+    : null;
+  const expiryTone =
+    daysUntilExpiry === null
+      ? ""
+      : daysUntilExpiry <= 14
+      ? "text-[var(--rf-red)]"
+      : daysUntilExpiry <= 45
+      ? "text-[#9c660e]"
+      : "text-[var(--rf-slate)]";
+
   return (
     <div className="flex items-center gap-4 px-5 py-4 transition hover:bg-[rgba(93,112,127,0.04)]">
       <div className="shrink-0">{fileIcon(doc.name)}</div>
@@ -379,6 +411,12 @@ function DocRow({ doc, onDelete }: { doc: Document; onDelete: (id: string) => vo
           {doc.property && <span>{doc.property.name}</span>}
           {doc.tenant && <span>{doc.tenant.user.name}</span>}
           <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
+          {expiresAt && (
+            <span className={expiryTone}>
+              Expires {expiresAt.toLocaleDateString()}{" "}
+              {daysUntilExpiry !== null ? `(${daysUntilExpiry <= 0 ? "today" : `${daysUntilExpiry}d`})` : ""}
+            </span>
+          )}
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1">

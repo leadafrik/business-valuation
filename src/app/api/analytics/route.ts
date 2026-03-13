@@ -36,6 +36,14 @@ export async function GET() {
       occupancy: [],
       arrears: months.map(({ label }) => ({ month: label, amount: 0 })),
       delinquent: [],
+      leaseExpiries: [],
+      documentExpiries: [],
+      operations: {
+        urgentTickets: 0,
+        unresolvedTickets: 0,
+        expiringLeases: 0,
+        expiringDocuments: 0,
+      },
       totals: {
         totalExpected: 0,
         totalCollected: 0,
@@ -113,6 +121,96 @@ export async function GET() {
     .sort((a, b) => b!.balance - a!.balance)
     .slice(0, 8);
 
+  const openTicketStatuses = ["OPEN", "ASSIGNED", "IN_PROGRESS", "AWAITING_PARTS", "ESCALATED"] as const;
+  const [urgentTickets, unresolvedTickets, leaseExpiriesRaw, documentExpiriesRaw] =
+    await Promise.all([
+      prisma.maintenanceTicket.count({
+        where: {
+          unit: { propertyId: { in: propertyIds } },
+          status: { in: openTicketStatuses as unknown as any[] },
+          priority: { in: ["HIGH", "URGENT"] },
+        },
+      }),
+      prisma.maintenanceTicket.count({
+        where: {
+          unit: { propertyId: { in: propertyIds } },
+          status: { in: openTicketStatuses as unknown as any[] },
+        },
+      }),
+      prisma.tenancy.findMany({
+        where: {
+          isActive: true,
+          endDate: {
+            not: null,
+            gte: now,
+            lte: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
+          },
+          unit: {
+            propertyId: { in: propertyIds },
+          },
+        },
+        include: {
+          tenant: { include: { user: { select: { name: true } } } },
+          unit: { select: { unitNumber: true, property: { select: { name: true } } } },
+        },
+        orderBy: { endDate: "asc" },
+        take: 8,
+      }),
+      prisma.document.findMany({
+        where: {
+          expiresAt: {
+            not: null,
+            gte: now,
+            lte: new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000),
+          },
+          OR: [
+            { propertyId: { in: propertyIds } },
+            {
+              tenant: {
+                tenancies: {
+                  some: {
+                    isActive: true,
+                    unit: { propertyId: { in: propertyIds } },
+                  },
+                },
+              },
+            },
+          ],
+        },
+        include: {
+          property: { select: { name: true } },
+          tenant: { include: { user: { select: { name: true } } } },
+        },
+        orderBy: { expiresAt: "asc" },
+        take: 8,
+      }),
+    ]);
+
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const leaseExpiries = leaseExpiriesRaw.map((tenancy) => ({
+    tenant: tenancy.tenant.user.name ?? "Tenant",
+    unit: tenancy.unit.unitNumber,
+    property: tenancy.unit.property.name,
+    endDate: tenancy.endDate!.toISOString(),
+    daysLeft: Math.max(
+      0,
+      Math.ceil((tenancy.endDate!.getTime() - now.getTime()) / msPerDay)
+    ),
+  }));
+
+  const documentExpiries = documentExpiriesRaw.map((document) => ({
+    id: document.id,
+    name: document.name,
+    type: document.type ?? "other",
+    property: document.property?.name ?? null,
+    tenant: document.tenant?.user.name ?? null,
+    expiresAt: document.expiresAt!.toISOString(),
+    daysLeft: Math.max(
+      0,
+      Math.ceil((document.expiresAt!.getTime() - now.getTime()) / msPerDay)
+    ),
+  }));
+
   // Totals
   const allPayments = await prisma.payment.aggregate({
     where: { tenancy: { unit: { propertyId: { in: propertyIds } } } },
@@ -127,6 +225,14 @@ export async function GET() {
     occupancy,
     arrears,
     delinquent,
+    leaseExpiries,
+    documentExpiries,
+    operations: {
+      urgentTickets,
+      unresolvedTickets,
+      expiringLeases: leaseExpiries.length,
+      expiringDocuments: documentExpiries.length,
+    },
     totals: {
       totalExpected,
       totalCollected,

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getAccessibleUnit, getManagementPropertyWhere } from "@/lib/access";
+import { createAuditLog } from "@/lib/audit";
+import { createNotifications } from "@/lib/notifications";
 
 // GET /api/tickets
 export async function GET(req: NextRequest) {
@@ -88,6 +90,50 @@ export async function POST(req: NextRequest) {
       photos: photos ?? [],
     },
   });
+
+  const managers = await prisma.property.findUnique({
+    where: { id: unit.propertyId },
+    select: {
+      ownerId: true,
+      admins: { select: { userId: true } },
+    },
+  });
+
+  const managerUserIds = Array.from(
+    new Set(
+      [managers?.ownerId, ...(managers?.admins.map((admin) => admin.userId) ?? [])].filter(
+        (userId): userId is string => Boolean(userId) && userId !== session.user.id
+      )
+    )
+  );
+
+  await Promise.all([
+    createNotifications(
+      managerUserIds.map((userId) => ({
+        userId,
+        type: "TICKET_CREATED",
+        title: "New maintenance ticket",
+        body: `${title} was reported for Unit ${unit.unitNumber} at ${unit.property.name}.`,
+        metadata: {
+          ticketId: ticket.id,
+          propertyId: unit.propertyId,
+          unitId: unit.id,
+        },
+      }))
+    ),
+    createAuditLog({
+      userId: session.user.id,
+      action: "TICKET_CREATED",
+      entityType: "MaintenanceTicket",
+      entityId: ticket.id,
+      metadata: {
+        propertyId: unit.propertyId,
+        unitId: unit.id,
+        category: ticket.category,
+        priority: ticket.priority,
+      },
+    }),
+  ]);
 
   return NextResponse.json(ticket, { status: 201 });
 }

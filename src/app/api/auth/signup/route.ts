@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
 
     let assignedRole: Role = "LANDLORD";
     if (role === "PROPERTY_ADMIN") assignedRole = "PROPERTY_ADMIN";
+    if (role === "TENANT") assignedRole = "TENANT";
 
     // Tenant invite token flow
     if (inviteToken) {
@@ -49,10 +50,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // Standard landlord / admin signup
-    await prisma.user.create({
+    // Standard self-signup
+    const user = await prisma.user.create({
       data: { name, email: email ?? null, phone: phone ?? null, password: hashedPassword, role: assignedRole },
     });
+
+    if (assignedRole === "TENANT") {
+      await prisma.tenantProfile.create({
+        data: {
+          userId: user.id,
+          phone: phone ?? null,
+          status: "PENDING_APPROVAL",
+        },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -60,4 +71,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Server error. Please try again." }, { status: 500 });
   }
 }
-

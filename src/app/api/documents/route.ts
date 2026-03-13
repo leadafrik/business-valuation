@@ -6,6 +6,10 @@ import {
   getManagementPropertyWhere,
   isManagementRole,
 } from "@/lib/access";
+import { createAuditLog } from "@/lib/audit";
+import { storeDocumentFile } from "@/lib/documentStorage";
+
+const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
 
 // GET /api/documents — list documents for current user's properties
 export async function GET() {
@@ -29,6 +33,18 @@ export async function GET() {
     where: {
       OR: [
         { property: propertyWhere },
+        {
+          tenant: {
+            tenancies: {
+              some: {
+                isActive: true,
+                unit: {
+                  property: propertyWhere,
+                },
+              },
+            },
+          },
+        },
         { uploadedBy: session.user.id },
       ],
     },
@@ -59,9 +75,21 @@ export async function POST(req: Request) {
     const type = (formData.get("type") as string) || "other";
     const propertyId = (formData.get("propertyId") as string) || null;
     const tenantId = (formData.get("tenantId") as string) || null;
+    const expiresAtRaw = (formData.get("expiresAt") as string) || "";
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+    if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
+      return NextResponse.json(
+        { error: "File is too large. Upload files up to 10 MB." },
+        { status: 400 }
+      );
+    }
+
+    const expiresAt = expiresAtRaw ? new Date(expiresAtRaw) : null;
+    if (expiresAt && Number.isNaN(expiresAt.valueOf())) {
+      return NextResponse.json({ error: "Invalid expiry date" }, { status: 400 });
     }
 
     if (propertyId) {
@@ -113,7 +141,7 @@ export async function POST(req: Request) {
     //   npm install @vercel/blob
     //   and add BLOB_READ_WRITE_TOKEN to .env
     // ──────────────────────────────────────────────────────────────────────────
-    const url = `/uploads/${Date.now()}-${file.name}`;
+    const { url } = await storeDocumentFile(file);
 
     const document = await prisma.document.create({
       data: {
@@ -122,7 +150,21 @@ export async function POST(req: Request) {
         type,
         propertyId: propertyId || null,
         tenantId: tenantId || null,
+        expiresAt,
         uploadedBy: session.user.id,
+      },
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      action: "DOCUMENT_UPLOADED",
+      entityType: "Document",
+      entityId: document.id,
+      metadata: {
+        propertyId: propertyId || null,
+        tenantId: tenantId || null,
+        type,
+        expiresAt: document.expiresAt?.toISOString() ?? null,
       },
     });
 

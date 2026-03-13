@@ -4,7 +4,7 @@
  */
 
 import prisma from "@/lib/prisma";
-import type { NotificationType, NotificationChannel } from "@prisma/client";
+import type { NotificationChannel, NotificationType, Prisma } from "@prisma/client";
 
 interface CreateNotificationOpts {
   userId: string;
@@ -23,8 +23,25 @@ export async function createNotification(opts: CreateNotificationOpts) {
       title: opts.title,
       body: opts.body,
       channel: opts.channel ?? "IN_APP",
-      metadata: (opts.metadata ?? {}) as object,
+      metadata: (opts.metadata ?? {}) as Prisma.InputJsonValue,
     },
+  });
+}
+
+export async function createNotifications(items: CreateNotificationOpts[]) {
+  if (!items.length) {
+    return { count: 0 };
+  }
+
+  return prisma.notification.createMany({
+    data: items.map((item) => ({
+      userId: item.userId,
+      type: item.type,
+      title: item.title,
+      body: item.body,
+      channel: item.channel ?? "IN_APP",
+      metadata: (item.metadata ?? {}) as Prisma.InputJsonValue,
+    })),
   });
 }
 

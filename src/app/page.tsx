@@ -1,4 +1,5 @@
 import Link from "next/link";
+import MarketplaceEntryLink from "@/components/marketplace/MarketplaceEntryLink";
 import {
   ArrowRight,
   BellRing,
@@ -105,7 +106,12 @@ export default function LandingPage() {
               >
                 Sign in
               </Link>
+              <MarketplaceEntryLink />
             </div>
+
+            <p className="text-sm leading-6 text-[var(--rf-slate)]">
+              Tenants can join too. Create an account first, then ask your landlord to add you using your registered phone number or email.
+            </p>
 
             <div className="grid gap-3 sm:grid-cols-3">
               {[

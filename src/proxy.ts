@@ -4,15 +4,15 @@ import { getToken } from "next-auth/jwt";
 
 const PUBLIC_PATHS = ["/", "/auth/signin", "/auth/signup", "/auth/error", "/auth/verify-otp"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths, Next.js internals, and API-key-authenticated routes
+  // Allow public paths, Next.js internals, and API-key-authenticated routes.
   if (
-    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "?")) ||
+    PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}?`)) ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/v1") ||       // Public REST API — uses API key auth
+    pathname.startsWith("/api/v1") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/public")
   ) {
@@ -30,7 +30,6 @@ export async function middleware(request: NextRequest) {
 
   const role = token.role as string;
 
-  // Tenant routes — only TENANT
   if (pathname.startsWith("/tenant/")) {
     if (role !== "TENANT") {
       return NextResponse.redirect(new URL("/dashboard", request.url));
@@ -38,9 +37,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Landlord/Admin routes — block TENANT
-  const landlordRoutes = ["/dashboard", "/properties", "/tenants", "/payments", "/tickets", "/announcements", "/analytics", "/documents", "/settings"];
-  if (landlordRoutes.some((r) => pathname === r || pathname.startsWith(r + "/"))) {
+  const landlordRoutes = [
+    "/dashboard",
+    "/properties",
+    "/tenants",
+    "/payments",
+    "/tickets",
+    "/announcements",
+    "/analytics",
+    "/documents",
+    "/settings",
+  ];
+
+  if (landlordRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
     if (role === "TENANT") {
       return NextResponse.redirect(new URL("/tenant/dashboard", request.url));
     }

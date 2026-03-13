@@ -6,6 +6,8 @@ import {
   getManagementPropertyWhere,
   isManagementRole,
 } from "@/lib/access";
+import { createAuditLog } from "@/lib/audit";
+import { createNotifications } from "@/lib/notifications";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -75,6 +77,56 @@ export async function POST(req: NextRequest) {
       sendEmail: sendEmail ?? false,
     },
   });
+
+  const tenantRecipients = await prisma.tenancy.findMany({
+    where: {
+      isActive: true,
+      unit: { propertyId },
+    },
+    select: {
+      tenant: {
+        select: {
+          userId: true,
+        },
+      },
+    },
+  });
+
+  const recipientUserIds = Array.from(
+    new Set(
+      tenantRecipients
+        .map((entry) => entry.tenant.userId)
+        .filter((userId): userId is string => Boolean(userId))
+    )
+  );
+
+  await Promise.all([
+    createNotifications(
+      recipientUserIds.map((userId) => ({
+        userId,
+        type: "ANNOUNCEMENT",
+        title,
+        body: bodyText,
+        metadata: {
+          announcementId: announcement.id,
+          propertyId,
+        },
+      }))
+    ),
+    createAuditLog({
+      userId: session.user.id,
+      action: "ANNOUNCEMENT_POSTED",
+      entityType: "Announcement",
+      entityId: announcement.id,
+      metadata: {
+        propertyId,
+        isPinned: announcement.isPinned,
+        sendSms: announcement.sendSms,
+        sendEmail: announcement.sendEmail,
+        recipients: recipientUserIds.length,
+      },
+    }),
+  ]);
 
   return NextResponse.json(announcement, { status: 201 });
 }

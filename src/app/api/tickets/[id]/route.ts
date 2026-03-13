@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { getManagementPropertyWhere, isManagementRole } from "@/lib/access";
+import { createAuditLog } from "@/lib/audit";
+import { createNotifications } from "@/lib/notifications";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -61,7 +63,24 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   const existing = await prisma.maintenanceTicket.findFirst({
     where: { id, unit: { property: propertyWhere } },
-    select: { id: true },
+    select: {
+      id: true,
+      title: true,
+      reportedBy: true,
+      assignedTo: true,
+      unit: {
+        select: {
+          id: true,
+          unitNumber: true,
+          property: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
   });
   if (!existing) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
@@ -87,6 +106,62 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
       },
     });
   }
+
+  const recipients = new Map<
+    string,
+    { type: "TICKET_UPDATED"; title: string; body: string; metadata: Record<string, unknown> }
+  >();
+
+  if (existing.reportedBy !== session.user.id) {
+    recipients.set(existing.reportedBy, {
+      type: "TICKET_UPDATED",
+      title: "Maintenance ticket updated",
+      body: `${existing.title} for Unit ${existing.unit.unitNumber} has been updated.`,
+      metadata: {
+        ticketId: existing.id,
+        propertyId: existing.unit.property.id,
+        status: ticket.status,
+      },
+    });
+  }
+
+  if (
+    body.assignedTo &&
+    body.assignedTo !== session.user.id &&
+    body.assignedTo !== existing.assignedTo
+  ) {
+    recipients.set(body.assignedTo, {
+      type: "TICKET_UPDATED",
+      title: "Ticket assigned to you",
+      body: `${existing.title} at ${existing.unit.property.name} now needs your attention.`,
+      metadata: {
+        ticketId: existing.id,
+        propertyId: existing.unit.property.id,
+      },
+    });
+  }
+
+  await Promise.all([
+    createNotifications(
+      Array.from(recipients.entries()).map(([userId, payload]) => ({
+        userId,
+        ...payload,
+      }))
+    ),
+    createAuditLog({
+      userId: session.user.id,
+      action: "TICKET_UPDATED",
+      entityType: "MaintenanceTicket",
+      entityId: existing.id,
+      metadata: {
+        propertyId: existing.unit.property.id,
+        status: body.status ?? ticket.status,
+        assignedTo: body.assignedTo ?? ticket.assignedTo,
+        commentAdded: Boolean(body.comment),
+        internalComment: Boolean(body.comment && body.isInternal),
+      },
+    }),
+  ]);
 
   return NextResponse.json(ticket);
 }
