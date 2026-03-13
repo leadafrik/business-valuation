@@ -35,6 +35,12 @@ const ENDPOINTS = [
   },
   {
     method: "GET",
+    path: "/api/v1/units",
+    desc: "List units with occupancy status and current tenant",
+    params: ["page", "limit", "propertyId", "status"],
+  },
+  {
+    method: "GET",
     path: "/api/v1/tenants",
     desc: "List all tenants",
     params: ["page", "limit", "propertyId", "status"],
@@ -44,6 +50,18 @@ const ENDPOINTS = [
     path: "/api/v1/payments",
     desc: "List payment records",
     params: ["page", "limit", "propertyId", "status", "from", "to"],
+  },
+  {
+    method: "POST",
+    path: "/api/v1/payments/record",
+    desc: "Record a payment from an external system",
+    params: ["paymentId", "tenancyId", "month", "year", "amountPaid", "transactionId", "paymentMethod"],
+  },
+  {
+    method: "GET",
+    path: "/api/v1/tickets",
+    desc: "List maintenance tickets",
+    params: ["page", "limit", "propertyId", "status", "priority", "category"],
   },
 ];
 
