@@ -154,6 +154,7 @@ model User {
   sessions      Session[]
   notifications Notification[]
   auditLogs     AuditLog[]
+  apiKeys       ApiKey[]
 
   @@map("users")
 }
@@ -458,6 +459,23 @@ model Notification {
   createdAt DateTime            @default(now())
 
   @@map("notifications")
+}
+
+// ─── API Keys ────────────────────────────────────────────────────────────────
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String    // e.g. "My Integration"
+  keyPrefix   String    // first 8 chars shown in UI, e.g. "rntf_a1b2"
+  keyHash     String    @unique // bcrypt hash of the full key
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  @@map("api_keys")
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────

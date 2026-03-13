@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Home,
   FileText,
+  Key,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -29,6 +30,7 @@ const landlordNav = [
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/settings/developer", label: "API / Developer", icon: Key },
 ];
 
 const tenantNav = [

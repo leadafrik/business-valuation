@@ -7,11 +7,12 @@ const PUBLIC_PATHS = ["/", "/auth/signin", "/auth/signup", "/auth/error", "/auth
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public paths and Next.js internals
+  // Allow public paths, Next.js internals, and API-key-authenticated routes
   if (
     PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "?")) ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/v1") ||       // Public REST API — uses API key auth
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/public")
   ) {
