@@ -3,7 +3,7 @@ import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "RentiFlow | Property Operations Command Center",
+  title: "Rentflow | Property Operations Command Center",
   description:
     "A modern operating layer for property teams managing rent collection, occupancy, service recovery, and documents.",
   icons: {

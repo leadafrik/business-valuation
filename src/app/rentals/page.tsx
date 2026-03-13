@@ -87,7 +87,7 @@ export default function RentalsPage() {
         <nav className="app-panel flex items-center justify-between rounded-[1.95rem] px-5 py-4">
           <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--rf-slate)] transition hover:text-[var(--rf-navy)]">
             <ArrowLeft className="h-4 w-4" />
-            Back to RentiFlow
+            Back to Rentflow
           </Link>
 
           <div className="flex items-center gap-3">

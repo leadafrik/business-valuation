@@ -8,6 +8,11 @@ import {
   isManagementRole,
 } from "@/lib/access";
 import { createAuditLog } from "@/lib/audit";
+import {
+  getUserContactClauses,
+  normalizeEmail,
+  normalizePhone,
+} from "@/lib/identity";
 import { createNotification } from "@/lib/notifications";
 
 // GET /api/tenants
@@ -77,7 +82,16 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, email, phone, unitId, startDate, rentAmount, deposit, nationalId } = body;
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const email = normalizeEmail(body.email);
+  const phone = normalizePhone(body.phone);
+  const {
+    unitId,
+    startDate,
+    rentAmount,
+    deposit,
+    nationalId,
+  } = body;
 
   if (!name || !unitId || !startDate) {
     return NextResponse.json({ error: "Name, unit, and start date are required." }, { status: 400 });
@@ -99,9 +113,24 @@ export async function POST(req: NextRequest) {
   const inviteExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
   const result = await prisma.$transaction(async (tx) => {
-    let user = await tx.user.findFirst({
-      where: email ? { email } : { phone },
-    });
+    const contactClauses = getUserContactClauses(email, phone);
+    const existingUsers = contactClauses.length
+      ? await tx.user.findMany({
+          where: {
+            OR: contactClauses,
+          },
+        })
+      : [];
+
+    const uniqueUsers = Array.from(
+      new Map(existingUsers.map((user) => [user.id, user])).values()
+    );
+
+    if (uniqueUsers.length > 1) {
+      throw new Error("That email and phone belong to different accounts.");
+    }
+
+    let user = uniqueUsers[0] ?? null;
 
     if (user && user.role !== "TENANT") {
       throw new Error("A non-tenant account already uses that email or phone.");

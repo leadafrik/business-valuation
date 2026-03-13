@@ -19,17 +19,18 @@ function SignInForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const isPhone = /^(07|01|\+254)/.test(identifier);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
+      const normalizedIdentifier = identifier.trim();
+      const isPhone = /^(07|01|\+254)/.test(normalizedIdentifier);
+
       const result = await signIn("credentials", {
-        email: isPhone ? undefined : identifier,
-        phone: isPhone ? identifier : undefined,
+        email: isPhone ? undefined : normalizedIdentifier,
+        phone: isPhone ? normalizedIdentifier : undefined,
         password,
         redirect: false,
       });
@@ -57,7 +58,7 @@ function SignInForm() {
             <div className="w-10 h-10 rounded-xl bg-green-600 flex items-center justify-center text-white font-bold">
               RF
             </div>
-            <span className="font-bold text-2xl text-slate-900">RentiFlow</span>
+            <span className="font-bold text-2xl text-slate-900">Rentflow</span>
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">Welcome back</h1>
           <p className="text-slate-500 text-sm mt-1">Sign in to your account</p>

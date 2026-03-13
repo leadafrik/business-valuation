@@ -1,5 +1,5 @@
 /**
- * RentiFlow – M-Pesa Receipt Parser
+ * Rentflow – M-Pesa Receipt Parser
  *
  * This module extracts structured payment data from:
  *  1. Pasted M-Pesa SMS text

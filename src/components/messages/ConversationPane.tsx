@@ -125,7 +125,7 @@ export default function ConversationPane({
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-[var(--rf-navy)]">
-                  {message.sender?.name || "RentiFlow user"}
+                  {message.sender?.name || "Rentflow user"}
                 </p>
                 <p className="text-xs text-[var(--rf-slate)]">
                   {new Date(message.createdAt).toLocaleString("en-KE", {

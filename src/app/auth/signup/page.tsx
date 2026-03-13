@@ -101,7 +101,7 @@ function SignUpForm() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-600 font-bold text-white">
               RF
             </div>
-            <span className="text-2xl font-bold text-slate-900">RentiFlow</span>
+            <span className="text-2xl font-bold text-slate-900">Rentflow</span>
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">
             {inviteToken ? "Accept your invitation" : "Create your account"}

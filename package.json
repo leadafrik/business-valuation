@@ -1,7 +1,7 @@
 {
-  "name": "rentiflow",
+  "name": "rentflow",
   "version": "1.0.0",
-  "description": "RentiFlow — Kenya Property Management & M-Pesa Rent Collection Platform",
+  "description": "Rentflow - Kenya Property Management & M-Pesa Rent Collection Platform",
   "main": "index.js",
   "scripts": {
     "dev": "next dev",

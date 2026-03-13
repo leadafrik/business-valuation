@@ -57,7 +57,7 @@ export default function LandingPage() {
                 Real estate operations
               </p>
               <p className="text-xl font-semibold tracking-tight text-[var(--rf-navy)]">
-                RentiFlow
+                Rentflow
               </p>
             </div>
           </Link>
@@ -88,7 +88,7 @@ export default function LandingPage() {
                 Trustworthy software for rent collection, service, and portfolio control.
               </h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--rf-slate)]">
-                RentiFlow gives landlords and property teams a reliable system for payments, occupancy, maintenance, notices, and documents, built to feel stable, clear, and professional.
+                Rentflow gives landlords and property teams a reliable system for payments, occupancy, maintenance, notices, and documents, built to feel stable, clear, and professional.
               </p>
             </div>
 
@@ -284,7 +284,7 @@ export default function LandingPage() {
                   Bring payments, maintenance, and property oversight into one professional system.
                 </h2>
                 <p className="mt-4 max-w-2xl text-base leading-8 text-white/72">
-                  RentiFlow is built to help landlord teams appear organized because their operations actually are.
+                  Rentflow is built to help landlord teams appear organized because their operations actually are.
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
@@ -308,7 +308,7 @@ export default function LandingPage() {
 
         <footer className="px-2 pb-8 pt-2 text-sm text-[var(--rf-slate)]">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p>RentiFlow is designed for stable operations, clear decisions, and professional landlord workflows.</p>
+            <p>Rentflow is designed for stable operations, clear decisions, and professional landlord workflows.</p>
             <div className="inline-flex items-center gap-2 text-[var(--rf-slate)]">
               <ShieldCheck className="h-4 w-4 text-[var(--rf-green)]" />
               Built for trust

@@ -1,4 +1,4 @@
-// RentiFlow – Property Management Platform
+// Rentflow – Property Management Platform
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {

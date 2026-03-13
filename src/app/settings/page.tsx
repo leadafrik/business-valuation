@@ -55,7 +55,7 @@ const SETTINGS_SECTIONS = [
       {
         icon: CreditCard,
         label: "Billing",
-        description: "Manage your RentiFlow subscription plan",
+        description: "Manage your Rentflow subscription plan",
         href: "/settings/billing",
         color: "bg-[var(--rf-red-soft)] text-[var(--rf-red)]",
       },

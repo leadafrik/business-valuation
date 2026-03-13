@@ -128,7 +128,7 @@ function SidebarPanel({
               collapsed ? "justify-center" : "gap-2.5"
             }`}
             onClick={onNavigate}
-            title={collapsed ? "RentiFlow" : undefined}
+            title={collapsed ? "Rentflow" : undefined}
           >
             <div
               className={`flex items-center justify-center rounded-[1.05rem] bg-[var(--rf-gold)] font-black text-[var(--rf-navy)] shadow-[0_14px_28px_-18px_rgba(249,168,38,0.68)] ${
@@ -143,7 +143,7 @@ function SidebarPanel({
                   Landlord OS
                 </p>
                 <p className="mt-0.5 text-lg font-semibold tracking-tight text-white">
-                  RentiFlow
+                  Rentflow
                 </p>
               </div>
             )}

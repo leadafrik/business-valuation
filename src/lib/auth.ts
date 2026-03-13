@@ -5,6 +5,7 @@ import bcryptjs from "bcryptjs";
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
 import type { Role } from "@prisma/client";
+import { normalizeEmail, normalizePhone } from "@/lib/identity";
 
 declare module "next-auth" {
   interface User {
@@ -44,13 +45,13 @@ export const authConfig = {
       async authorize(credentials) {
         if (!credentials?.password) return null;
 
-        const identifier = (credentials.email || credentials.phone) as string;
+        const email = normalizeEmail(credentials.email);
+        const phone = normalizePhone(credentials.phone);
+        const identifier = email || phone;
         if (!identifier) return null;
 
         const user = await prisma.user.findFirst({
-          where: credentials.email
-            ? { email: credentials.email as string }
-            : { phone: credentials.phone as string },
+          where: email ? { email } : { phone: phone as string },
         });
 
         if (!user || !user.password) return null;

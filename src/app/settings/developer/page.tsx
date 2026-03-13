@@ -136,7 +136,7 @@ export default function DeveloperSettingsPage() {
             Developer / API Access
           </h1>
           <p className="text-slate-500 mt-1">
-            Use API keys to integrate RentiFlow with your own tools and automation workflows.
+            Use API keys to integrate Rentflow with your own tools and automation workflows.
           </p>
         </div>
 

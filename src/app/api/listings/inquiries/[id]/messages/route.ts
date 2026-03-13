@@ -87,7 +87,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   const senderIsManagement = isManagementRole(session.user.role);
   const senderLabel =
     session.user.name?.trim() ||
-    (senderIsManagement ? "RentiFlow team" : "Prospective tenant");
+    (senderIsManagement ? "Rentflow team" : "Prospective tenant");
 
   const message = await prisma.inquiryMessage.create({
     data: {

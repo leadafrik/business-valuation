@@ -1,4 +1,4 @@
-// RentiFlow – Platform-wide TypeScript types
+// Rentflow – Platform-wide TypeScript types
 
 export type Role = "SUPER_ADMIN" | "LANDLORD" | "PROPERTY_ADMIN" | "TENANT";
 

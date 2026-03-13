@@ -1,5 +1,5 @@
 /**
- * RentiFlow – Platform Notification Helpers
+ * Rentflow – Platform Notification Helpers
  * Sends in-app db notifications + optional email/SMS.
  */
 
