@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 
 interface StatCardProps {
   label: string;
@@ -12,42 +12,78 @@ interface StatCardProps {
   highlight?: "green" | "red" | "amber" | "blue" | "default";
 }
 
-const highlights: Record<string, string> = {
-  green: "border-l-4 border-l-green-500",
-  red: "border-l-4 border-l-red-500",
-  amber: "border-l-4 border-l-amber-500",
-  blue: "border-l-4 border-l-blue-500",
-  default: "",
-};
+const highlightStyles = {
+  green: {
+    card: "border-[rgba(46,125,50,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(244,250,245,0.92))]",
+    rail: "bg-[var(--rf-green)]",
+    icon: "bg-[var(--rf-green-soft)] text-[var(--rf-green)]",
+  },
+  red: {
+    card: "border-[rgba(211,47,47,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(253,239,239,0.92))]",
+    rail: "bg-[var(--rf-red)]",
+    icon: "bg-[var(--rf-red-soft)] text-[var(--rf-red)]",
+  },
+  amber: {
+    card: "border-[rgba(249,168,38,0.16)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,248,236,0.92))]",
+    rail: "bg-[var(--rf-gold)]",
+    icon: "bg-[var(--rf-gold-soft)] text-[#9c660e]",
+  },
+  blue: {
+    card: "border-[rgba(10,35,66,0.1)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,248,251,0.92))]",
+    rail: "bg-[var(--rf-navy)]",
+    icon: "bg-[rgba(10,35,66,0.08)] text-[var(--rf-navy)]",
+  },
+  default: {
+    card: "border-[rgba(93,112,127,0.12)] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(246,248,250,0.92))]",
+    rail: "bg-[var(--rf-slate)]",
+    icon: "bg-[var(--rf-slate-soft)] text-[var(--rf-slate)]",
+  },
+} as const;
 
 export default function StatCard({
   label,
   value,
   sub,
   icon: Icon,
-  iconColor = "text-slate-500",
+  iconColor = "",
   trend,
   trendLabel,
   highlight = "default",
 }: StatCardProps) {
+  const tone = highlightStyles[highlight];
+  const detail = trendLabel ?? sub;
+
   return (
-    <div
-      className={`bg-white rounded-xl shadow-sm p-5 flex flex-col gap-2 card-hover ${highlights[highlight]}`}
+    <article
+      className={`card-hover relative overflow-hidden rounded-[1.95rem] border p-5 shadow-[0_18px_36px_-30px_rgba(10,35,66,0.1)] ${tone.card}`}
     >
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-slate-500 font-medium">{label}</span>
-        {Icon && <Icon className={`w-5 h-5 ${iconColor}`} />}
+      <div className={`absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-[0.08] blur-2xl ${tone.rail}`} />
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--rf-slate)]">
+            {label}
+          </p>
+          <p className="mt-3 truncate text-[1.9rem] font-semibold tracking-tight text-[var(--rf-navy)]">
+            {value}
+          </p>
+        </div>
+        {Icon && (
+          <div
+            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[1.1rem] ${tone.icon}`}
+          >
+            <Icon className={`h-5 w-5 ${iconColor}`} />
+          </div>
+        )}
       </div>
-      <p className="text-2xl font-bold text-slate-900">{value}</p>
-      {(sub || trend) && (
-        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-          {trend === "up" && <TrendingUp className="w-3.5 h-3.5 text-green-500" />}
-          {trend === "down" && <TrendingDown className="w-3.5 h-3.5 text-red-500" />}
-          {trend === "neutral" && <Minus className="w-3.5 h-3.5 text-slate-400" />}
-          {trendLabel && <span>{trendLabel}</span>}
-          {sub && !trendLabel && <span>{sub}</span>}
+
+      {detail && (
+        <div className="mt-4 flex items-center gap-2 text-sm text-[var(--rf-slate)]">
+          {trend === "up" && <TrendingUp className="h-4 w-4 text-[var(--rf-green)]" />}
+          {trend === "down" && <TrendingDown className="h-4 w-4 text-[var(--rf-red)]" />}
+          {trend === "neutral" && <Minus className="h-4 w-4 text-[var(--rf-slate)]" />}
+          <span className="truncate">{detail}</span>
         </div>
       )}
-    </div>
+    </article>
   );
 }

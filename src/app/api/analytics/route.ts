@@ -1,25 +1,20 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
+import { getManagementPropertyWhere, isManagementRole } from "@/lib/access";
 
 export async function GET() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isManagementRole(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const userId = session.user.id;
   const role = session.user.role;
-
-  // Resolve property IDs visible to this user
-  let propertyIds: string[] = [];
-  if (role === "SUPER_ADMIN") {
-    const props = await prisma.property.findMany({ select: { id: true } });
-    propertyIds = props.map((p) => p.id);
-  } else if (role === "LANDLORD") {
-    const props = await prisma.property.findMany({ where: { ownerId: userId }, select: { id: true } });
-    propertyIds = props.map((p) => p.id);
-  } else if (role === "PROPERTY_ADMIN") {
-    const links = await prisma.propertyAdmin.findMany({ where: { userId }, select: { propertyId: true } });
-    propertyIds = links.map((l) => l.propertyId);
+  const propertyWhere = getManagementPropertyWhere(userId, role);
+  if (!propertyWhere) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const now = new Date();
@@ -27,6 +22,28 @@ export async function GET() {
   for (let i = 11; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     months.push({ label: d.toLocaleString("en-KE", { month: "short", year: "2-digit" }), month: d.getMonth() + 1, year: d.getFullYear() });
+  }
+
+  const props = await prisma.property.findMany({
+    where: propertyWhere,
+    select: { id: true },
+  });
+  const propertyIds = props.map((p) => p.id);
+
+  if (propertyIds.length === 0) {
+    return NextResponse.json({
+      monthly: months.map(({ label }) => ({ month: label, expected: 0, collected: 0 })),
+      occupancy: [],
+      arrears: months.map(({ label }) => ({ month: label, amount: 0 })),
+      delinquent: [],
+      totals: {
+        totalExpected: 0,
+        totalCollected: 0,
+        rate: 0,
+        occupiedUnits: 0,
+        vacantUnits: 0,
+      },
+    });
   }
 
   // Monthly data

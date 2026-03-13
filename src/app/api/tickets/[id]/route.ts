@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { getManagementPropertyWhere, isManagementRole } from "@/lib/access";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -10,8 +11,32 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
 
-  const ticket = await prisma.maintenanceTicket.findUnique({
-    where: { id },
+  const accessWhere =
+    session.user.role === "TENANT"
+      ? {
+          unit: {
+            currentTenancy: {
+              is: {
+                isActive: true,
+                tenant: { userId: session.user.id },
+              },
+            },
+          },
+        }
+      : (() => {
+          const propertyWhere = getManagementPropertyWhere(
+            session.user.id,
+            session.user.role
+          );
+          return propertyWhere ? { unit: { property: propertyWhere } } : null;
+        })();
+
+  if (!accessWhere) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const ticket = await prisma.maintenanceTicket.findFirst({
+    where: { id, ...accessWhere },
     include: {
       unit: { include: { property: { select: { name: true, id: true } } } },
       comments: { orderBy: { createdAt: "asc" } },
@@ -26,8 +51,19 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isManagementRole(session.user.role)) {
+    return NextResponse.json({ error: "Only managers can update tickets." }, { status: 403 });
+  }
   const { id } = await params;
   const body = await req.json();
+  const propertyWhere = getManagementPropertyWhere(session.user.id, session.user.role);
+  if (!propertyWhere) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const existing = await prisma.maintenanceTicket.findFirst({
+    where: { id, unit: { property: propertyWhere } },
+    select: { id: true },
+  });
+  if (!existing) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
   const updates: Record<string, unknown> = {};
   if (body.status) updates.status = body.status;
@@ -36,7 +72,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (body.status === "RESOLVED") updates.resolvedAt = new Date();
 
   const ticket = await prisma.maintenanceTicket.update({
-    where: { id },
+    where: { id: existing.id },
     data: updates,
   });
 

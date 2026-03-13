@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { getAccessibleUnit, getManagementPropertyWhere } from "@/lib/access";
 
 // GET /api/tickets
 export async function GET(req: NextRequest) {
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status");
+  const statuses = searchParams.getAll("status").filter(Boolean);
   const propertyId = searchParams.get("propertyId");
 
   const userId = session.user.id;
@@ -16,11 +17,20 @@ export async function GET(req: NextRequest) {
 
   let whereUnit = {};
   if (role === "TENANT") {
-    whereUnit = { currentTenancy: { tenant: { userId } } };
-  } else if (role === "LANDLORD") {
-    whereUnit = { property: { ownerId: userId } };
-  } else if (role === "PROPERTY_ADMIN") {
-    whereUnit = { property: { admins: { some: { userId } } } };
+    whereUnit = {
+      currentTenancy: {
+        is: {
+          isActive: true,
+          tenant: { userId },
+        },
+      },
+    };
+  } else {
+    const propertyWhere = getManagementPropertyWhere(userId, role);
+    if (!propertyWhere) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    whereUnit = { property: propertyWhere };
   }
 
   const tickets = await prisma.maintenanceTicket.findMany({
@@ -29,13 +39,17 @@ export async function GET(req: NextRequest) {
         ...(propertyId ? { propertyId } : {}),
         ...whereUnit,
       },
-      ...(status ? { status: status as any } : {}),
+      ...(statuses.length === 1
+        ? { status: statuses[0] as any }
+        : statuses.length > 1
+        ? { status: { in: statuses as any[] } }
+        : {}),
     },
     include: {
       unit: {
         include: { property: { select: { name: true } } },
       },
-      comments: { orderBy: { createdAt: "asc" } },
+      _count: { select: { comments: true } },
     },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
   });
@@ -55,9 +69,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unit, title, and description are required." }, { status: 400 });
   }
 
+  const unit = await getAccessibleUnit(
+    { id: session.user.id, role: session.user.role },
+    unitId
+  );
+  if (!unit) {
+    return NextResponse.json({ error: "Unit not found." }, { status: 404 });
+  }
+
   const ticket = await prisma.maintenanceTicket.create({
     data: {
-      unitId,
+      unitId: unit.id,
       reportedBy: session.user.id,
       title,
       description,

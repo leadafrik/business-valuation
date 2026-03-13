@@ -3,8 +3,9 @@ import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "RentiFlow – Property Management Platform",
-  description: "The smart way to manage properties, track payments, and communicate with tenants in Kenya.",
+  title: "RentiFlow | Property Operations Command Center",
+  description:
+    "A modern operating layer for property teams managing rent collection, occupancy, service recovery, and documents.",
   icons: {
     icon: "/favicon.svg",
   },
@@ -17,10 +18,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased bg-slate-50 text-slate-900">
-        <SessionProvider>
-          {children}
-        </SessionProvider>
+      <body className="min-h-screen bg-transparent text-slate-900 antialiased">
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );

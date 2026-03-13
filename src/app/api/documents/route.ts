@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
+import {
+  canManageProperty,
+  getManagementPropertyWhere,
+  isManagementRole,
+} from "@/lib/access";
 
 // GET /api/documents — list documents for current user's properties
 export async function GET() {
@@ -8,28 +13,22 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (!isManagementRole(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
-  // Get property IDs this user owns or manages
-  const [ownedProps, managedProps] = await Promise.all([
-    prisma.property.findMany({
-      where: { ownerId: session.user.id },
-      select: { id: true },
-    }),
-    prisma.propertyAdmin.findMany({
-      where: { userId: session.user.id },
-      select: { propertyId: true },
-    }),
-  ]);
-
-  const propertyIds = [
-    ...ownedProps.map((p) => p.id),
-    ...managedProps.map((p) => p.propertyId),
-  ];
+  const propertyWhere = getManagementPropertyWhere(
+    session.user.id,
+    session.user.role
+  );
+  if (!propertyWhere) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const documents = await prisma.document.findMany({
     where: {
       OR: [
-        { propertyId: { in: propertyIds } },
+        { property: propertyWhere },
         { uploadedBy: session.user.id },
       ],
     },
@@ -49,6 +48,9 @@ export async function POST(req: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (!isManagementRole(session.user.role)) {
+    return NextResponse.json({ error: "Only managers can upload documents here." }, { status: 403 });
+  }
 
   try {
     const formData = await req.formData();
@@ -60,6 +62,45 @@ export async function POST(req: Request) {
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    if (propertyId) {
+      const canAccess = await canManageProperty(
+        { id: session.user.id, role: session.user.role },
+        propertyId
+      );
+      if (!canAccess) {
+        return NextResponse.json({ error: "Property not found" }, { status: 404 });
+      }
+    }
+
+    if (tenantId) {
+      const propertyWhere = getManagementPropertyWhere(
+        session.user.id,
+        session.user.role
+      );
+      if (!propertyWhere) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      const tenant = await prisma.tenantProfile.findFirst({
+        where: {
+          id: tenantId,
+          tenancies: {
+            some: {
+              isActive: true,
+              unit: {
+                property: propertyWhere,
+              },
+            },
+          },
+        },
+        select: { id: true },
+      });
+
+      if (!tenant) {
+        return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+      }
     }
 
     // ─── File storage ──────────────────────────────────────────────────────────

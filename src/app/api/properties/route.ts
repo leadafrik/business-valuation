@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { getManagementPropertyWhere, isManagementRole } from "@/lib/access";
 
 // GET /api/properties – list all properties for current landlord/admin
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isManagementRole(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("q") ?? "";
   const userId = session.user.id;
   const role = session.user.role;
 
-  const where =
-    role === "SUPER_ADMIN"
-      ? {}
-      : role === "LANDLORD"
-      ? { ownerId: userId }
-      : { admins: { some: { userId } } };
+  const where = getManagementPropertyWhere(userId, role);
+  if (!where) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const properties = await prisma.property.findMany({
     where: {

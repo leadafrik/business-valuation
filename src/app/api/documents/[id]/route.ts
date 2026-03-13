@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
+import { getManagementPropertyWhere, isManagementRole } from "@/lib/access";
 
 // DELETE /api/documents/[id]
 export async function DELETE(
@@ -12,8 +13,19 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const managementScope =
+    isManagementRole(session.user.role)
+      ? getManagementPropertyWhere(session.user.id, session.user.role)
+      : null;
+
   const doc = await prisma.document.findFirst({
-    where: { id: params.id, uploadedBy: session.user.id },
+    where: {
+      id: params.id,
+      OR: [
+        { uploadedBy: session.user.id },
+        ...(managementScope ? [{ property: managementScope }] : []),
+      ],
+    },
   });
 
   if (!doc) {

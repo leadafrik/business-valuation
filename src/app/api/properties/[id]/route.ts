@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { getManagementPropertyWhere, isManagementRole } from "@/lib/access";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -8,10 +9,15 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function GET(_req: NextRequest, { params }: Ctx) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isManagementRole(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const { id } = await params;
+  const scope = getManagementPropertyWhere(session.user.id, session.user.role);
+  if (!scope) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const property = await prisma.property.findUnique({
-    where: { id },
+  const property = await prisma.property.findFirst({
+    where: { id, ...scope },
     include: {
       owner: { select: { id: true, name: true, email: true } },
       admins: { include: { user: { select: { id: true, name: true, email: true } } } },
@@ -43,10 +49,18 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
+  const scope = getManagementPropertyWhere(session.user.id, session.user.role);
+  if (!scope) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json();
 
+  const existing = await prisma.property.findFirst({
+    where: { id, ...scope },
+    select: { id: true },
+  });
+  if (!existing) return NextResponse.json({ error: "Property not found." }, { status: 404 });
+
   const property = await prisma.property.update({
-    where: { id },
+    where: { id: existing.id },
     data: {
       name: body.name,
       address: body.address,
@@ -66,8 +80,19 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 export async function DELETE(_req: NextRequest, { params }: Ctx) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!["LANDLORD", "SUPER_ADMIN"].includes(session.user.role)) {
+    return NextResponse.json({ error: "Only property owners can delete properties." }, { status: 403 });
+  }
   const { id } = await params;
+  const scope = getManagementPropertyWhere(session.user.id, session.user.role);
+  if (!scope) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  await prisma.property.delete({ where: { id } });
+  const existing = await prisma.property.findFirst({
+    where: { id, ...scope },
+    select: { id: true },
+  });
+  if (!existing) return NextResponse.json({ error: "Property not found." }, { status: 404 });
+
+  await prisma.property.delete({ where: { id: existing.id } });
   return NextResponse.json({ success: true });
 }

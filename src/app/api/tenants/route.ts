@@ -2,11 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
+import {
+  getAccessibleUnit,
+  getManagementPropertyWhere,
+  isManagementRole,
+} from "@/lib/access";
 
 // GET /api/tenants
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isManagementRole(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { searchParams } = new URL(req.url);
   const propertyId = searchParams.get("propertyId");
@@ -15,8 +23,8 @@ export async function GET(req: NextRequest) {
   const userId = session.user.id;
   const role = session.user.role;
 
-  const propertyWhere =
-    role === "SUPER_ADMIN" ? {} : role === "LANDLORD" ? { ownerId: userId } : { admins: { some: { userId } } };
+  const propertyWhere = getManagementPropertyWhere(userId, role);
+  if (!propertyWhere) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const tenancies = await prisma.tenancy.findMany({
     where: {
@@ -62,6 +70,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isManagementRole(session.user.role)) {
+    return NextResponse.json({ error: "Only managers can add tenants." }, { status: 403 });
+  }
 
   const body = await req.json();
   const { name, email, phone, unitId, startDate, rentAmount, deposit, nationalId } = body;
@@ -73,84 +84,96 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Email or phone is required." }, { status: 400 });
   }
 
-  // Check if unit exists and is vacant
-  const unit = await prisma.unit.findUnique({ where: { id: unitId } });
+  const unit = await getAccessibleUnit(
+    { id: session.user.id, role: session.user.role },
+    unitId
+  );
   if (!unit) return NextResponse.json({ error: "Unit not found." }, { status: 404 });
-  if (unit.status === "OCCUPIED") {
+  if (unit.status === "OCCUPIED" || unit.currentTenancy?.isActive) {
     return NextResponse.json({ error: "This unit is already occupied." }, { status: 409 });
   }
-
-  // Create or find user account
-  let user = await prisma.user.findFirst({
-    where: email ? { email } : { phone },
-  });
 
   const inviteToken = crypto.randomBytes(32).toString("hex");
   const inviteExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-  let tenantProfile: Awaited<ReturnType<typeof prisma.tenantProfile.create>>;
-
-  if (!user) {
-    // Create a placeholder user (they will complete registration via invite)
-    user = await prisma.user.create({
-      data: {
-        name,
-        email: email ?? null,
-        phone: phone ?? null,
-        role: "TENANT",
-      },
+  const result = await prisma.$transaction(async (tx) => {
+    let user = await tx.user.findFirst({
+      where: email ? { email } : { phone },
     });
 
-    tenantProfile = await prisma.tenantProfile.create({
+    if (user && user.role !== "TENANT") {
+      throw new Error("A non-tenant account already uses that email or phone.");
+    }
+
+    let tenantProfile;
+
+    if (!user) {
+      user = await tx.user.create({
+        data: {
+          name,
+          email: email ?? null,
+          phone: phone ?? null,
+          role: "TENANT",
+        },
+      });
+
+      tenantProfile = await tx.tenantProfile.create({
+        data: {
+          userId: user.id,
+          nationalId,
+          phone,
+          inviteToken,
+          inviteExpiry,
+          status: "PENDING_APPROVAL",
+        },
+      });
+    } else {
+      tenantProfile = await tx.tenantProfile.upsert({
+        where: { userId: user.id },
+        update: { nationalId, inviteToken, inviteExpiry, phone },
+        create: {
+          userId: user.id,
+          nationalId,
+          phone,
+          inviteToken,
+          inviteExpiry,
+          status: "PENDING_APPROVAL",
+        },
+      });
+    }
+
+    const tenancy = await tx.tenancy.create({
       data: {
-        userId: user.id,
-        nationalId,
-        phone,
-        inviteToken,
-        inviteExpiry,
-        status: "PENDING_APPROVAL",
+        unitId: unit.id,
+        tenantId: tenantProfile.id,
+        startDate: new Date(startDate),
+        rentAmount: Number(rentAmount ?? unit.rentAmount),
+        deposit: deposit ? Number(deposit) : null,
+        isActive: true,
+        activeForUnitId: unit.id,
       },
     });
-  } else {
-    // Ensure tenant profile exists
-    tenantProfile = await prisma.tenantProfile.upsert({
-      where: { userId: user.id },
-      update: { nationalId, inviteToken, inviteExpiry },
-      create: {
-        userId: user.id,
-        nationalId,
-        phone,
-        inviteToken,
-        inviteExpiry,
-        status: "PENDING_APPROVAL",
-      },
+
+    await tx.unit.update({
+      where: { id: unit.id },
+      data: { status: "OCCUPIED" },
     });
+
+    await tx.tenantProfile.update({
+      where: { id: tenantProfile.id },
+      data: { status: "ACTIVE" },
+    });
+
+    return { tenancy };
+  }).catch((error: unknown) => {
+    const message =
+      error instanceof Error ? error.message : "Failed to add tenant.";
+    return { error: message };
+  });
+
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: 409 });
   }
 
-  // Create tenancy
-  const tenancy = await prisma.tenancy.create({
-    data: {
-      unitId,
-      tenantId: tenantProfile.id,
-      startDate: new Date(startDate),
-      rentAmount: Number(rentAmount ?? unit.rentAmount),
-      deposit: deposit ? Number(deposit) : null,
-      isActive: true,
-      activeForUnitId: unitId,
-    },
-  });
-
-  // Mark unit as occupied
-  await prisma.unit.update({
-    where: { id: unitId },
-    data: { status: "OCCUPIED" },
-  });
-
-  // Update tenant profile status
-  await prisma.tenantProfile.update({
-    where: { id: tenantProfile.id },
-    data: { status: "ACTIVE" },
-  });
-
-  return NextResponse.json({ tenancy, inviteToken }, { status: 201 });
+  return NextResponse.json({ tenancy: result.tenancy, inviteToken }, { status: 201 });
 }
