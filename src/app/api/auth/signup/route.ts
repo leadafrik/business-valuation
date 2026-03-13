@@ -164,6 +164,8 @@ export async function POST(req: NextRequest) {
         prisma.tenantProfile.upsert({
           where: { userId: existingUser.id },
           update: {
+            inviteToken: null,
+            inviteExpiry: null,
             ...(phone ? { phone } : {}),
           },
           create: {

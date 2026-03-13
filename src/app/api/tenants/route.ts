@@ -161,7 +161,12 @@ export async function POST(req: NextRequest) {
     } else {
       tenantProfile = await tx.tenantProfile.upsert({
         where: { userId: user.id },
-        update: { nationalId, inviteToken, inviteExpiry, phone },
+        update: {
+          nationalId,
+          inviteToken,
+          inviteExpiry,
+          ...(phone ? { phone } : {}),
+        },
         create: {
           userId: user.id,
           nationalId,

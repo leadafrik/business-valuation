@@ -6,6 +6,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Suspense } from "react";
+import { isPhoneLike, normalizePhone } from "@/lib/identity";
 
 function SignInForm() {
   const router = useRouter();
@@ -26,11 +27,12 @@ function SignInForm() {
 
     try {
       const normalizedIdentifier = identifier.trim();
-      const isPhone = /^(07|01|\+254)/.test(normalizedIdentifier);
+      const isPhone = isPhoneLike(normalizedIdentifier);
+      const normalizedPhone = isPhone ? normalizePhone(normalizedIdentifier) : null;
 
       const result = await signIn("credentials", {
         email: isPhone ? undefined : normalizedIdentifier,
-        phone: isPhone ? normalizedIdentifier : undefined,
+        phone: normalizedPhone ?? undefined,
         password,
         redirect: false,
       });
