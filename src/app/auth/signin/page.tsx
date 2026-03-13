@@ -11,6 +11,7 @@ function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  const justRegistered = searchParams.get("registered") === "1";
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -63,6 +64,12 @@ function SignInForm() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+          {justRegistered && (
+            <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg mb-5">
+              Account created! Sign in below.
+            </div>
+          )}
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-5">
               {error}

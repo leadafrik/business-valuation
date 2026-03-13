@@ -23,6 +23,7 @@ function SignUpForm() {
   });
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
+  const [alreadyExists, setAlreadyExists] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -31,6 +32,7 @@ function SignUpForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setAlreadyExists(false);
 
     if (form.password !== form.confirmPassword) {
       setError("Passwords do not match.");
@@ -58,6 +60,7 @@ function SignUpForm() {
 
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 409) setAlreadyExists(true);
         setError(data.error ?? "Registration failed.");
         return;
       }
@@ -93,7 +96,14 @@ function SignUpForm() {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-5">
-              {error}
+              <p>{error}</p>
+              {alreadyExists && (
+                <p className="mt-1 font-medium">
+                  <Link href="/auth/signin" className="underline hover:text-red-900">
+                    Sign in to your existing account →
+                  </Link>
+                </p>
+              )}
             </div>
           )}
 
