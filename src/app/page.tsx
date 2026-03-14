@@ -142,11 +142,11 @@ export default function LandingPage() {
                   Stable from the first glance
                 </h2>
               </div>
-              <div className="rounded-2xl bg-white px-4 py-3 text-right text-[var(--rf-navy)] shadow-sm">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--rf-slate)]">
-                  Collected
+              <div className="rounded-2xl bg-white px-4 py-3 text-[var(--rf-navy)] shadow-sm">
+                <p className="flex items-center gap-2 whitespace-nowrap text-sm font-semibold">
+                  <span className="uppercase tracking-[0.18em] text-[var(--rf-slate)]">Collected</span>
+                  <span className="text-2xl">KES 328K</span>
                 </p>
-                <p className="mt-1 text-2xl font-semibold">KES 328K</p>
               </div>
             </div>
 

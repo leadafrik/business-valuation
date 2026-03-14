@@ -13,6 +13,7 @@ function SignInForm() {
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
   const justRegistered = searchParams.get("registered") === "1";
   const callbackError = searchParams.get("error");
+  const callbackCode = searchParams.get("code");
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -30,29 +31,24 @@ function SignInForm() {
       const isPhone = isPhoneLike(normalizedIdentifier);
       const normalizedPhone = isPhone ? normalizePhone(normalizedIdentifier) : null;
 
-      const result = await signIn("credentials", {
+      await signIn("credentials", {
         email: isPhone ? undefined : normalizedIdentifier,
         phone: normalizedPhone ?? undefined,
         password,
-        redirect: false,
-        callbackUrl,
+        redirectTo: callbackUrl,
       });
-
-      if (result?.error) {
-        setError("Invalid credentials. Please try again.");
-      } else if (result?.url) {
-        window.location.href = result.url;
-      } else if (result?.ok) {
-        window.location.href = callbackUrl;
-      } else {
-        setError("Sign-in could not be completed. Please try again.");
-      }
     } catch {
       setError("An error occurred. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
+
+  const callbackMessage =
+    callbackError === "CredentialsSignin" || callbackCode === "credentials"
+      ? "Invalid credentials. Please try again."
+      : callbackError
+      ? "Sign-in could not be completed. Please try again."
+      : "";
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -76,9 +72,9 @@ function SignInForm() {
             </div>
           )}
 
-          {(error || callbackError) && (
+          {(error || callbackMessage) && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-5">
-              {error || "Invalid credentials. Please try again."}
+              {error || callbackMessage}
             </div>
           )}
 
