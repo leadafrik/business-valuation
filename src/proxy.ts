@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 const PUBLIC_PATHS = ["/", "/auth/signin", "/auth/signup", "/auth/error", "/auth/verify-otp"];
+const authSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -19,7 +20,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+  const token = await getToken({ req: request, secret: authSecret });
 
   if (!token) {
     const url = request.nextUrl.clone();
