@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Suspense } from "react";
 import { isPhoneLike, normalizePhone } from "@/lib/identity";
@@ -14,33 +13,60 @@ function SignInForm() {
   const justRegistered = searchParams.get("registered") === "1";
   const callbackError = searchParams.get("error");
   const callbackCode = searchParams.get("code");
+  const formRef = useRef<HTMLFormElement>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [csrfToken, setCsrfToken] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    fetch("/api/auth/csrf")
+      .then((response) => response.json())
+      .then((payload) => {
+        if (active && typeof payload?.csrfToken === "string") {
+          setCsrfToken(payload.csrfToken);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setError("Sign-in is unavailable right now. Please refresh and try again.");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
-
-    try {
-      const normalizedIdentifier = identifier.trim();
-      const isPhone = isPhoneLike(normalizedIdentifier);
-      const normalizedPhone = isPhone ? normalizePhone(normalizedIdentifier) : null;
-
-      await signIn("credentials", {
-        email: isPhone ? undefined : normalizedIdentifier,
-        phone: normalizedPhone ?? undefined,
-        password,
-        redirectTo: callbackUrl,
-      });
-    } catch {
-      setError("An error occurred. Please try again.");
-      setLoading(false);
+    if (!csrfToken) {
+      setError("Sign-in is not ready yet. Refresh the page and try again.");
+      return;
     }
+
+    const normalizedIdentifier = identifier.trim();
+    const isPhone = isPhoneLike(normalizedIdentifier);
+    const normalizedPhone = isPhone ? normalizePhone(normalizedIdentifier) : null;
+
+    if (emailInputRef.current) {
+      emailInputRef.current.value = isPhone ? "" : normalizedIdentifier;
+    }
+
+    if (phoneInputRef.current) {
+      phoneInputRef.current.value = normalizedPhone ?? "";
+    }
+
+    setLoading(true);
+    formRef.current?.submit();
   };
 
   const callbackMessage =
@@ -78,7 +104,17 @@ function SignInForm() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            ref={formRef}
+            onSubmit={handleSubmit}
+            action="/api/auth/callback/credentials"
+            method="POST"
+            className="space-y-4"
+          >
+            <input type="hidden" name="csrfToken" value={csrfToken} />
+            <input type="hidden" name="callbackUrl" value={callbackUrl} />
+            <input ref={emailInputRef} type="hidden" name="email" />
+            <input ref={phoneInputRef} type="hidden" name="phone" />
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 Phone number or email
@@ -105,6 +141,7 @@ function SignInForm() {
               <div className="relative">
                 <input
                   type={showPw ? "text" : "password"}
+                  name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent pr-10"
