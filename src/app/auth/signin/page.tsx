@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
@@ -9,10 +9,10 @@ import { Suspense } from "react";
 import { isPhoneLike, normalizePhone } from "@/lib/identity";
 
 function SignInForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
   const justRegistered = searchParams.get("registered") === "1";
+  const callbackError = searchParams.get("error");
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -35,14 +35,17 @@ function SignInForm() {
         phone: normalizedPhone ?? undefined,
         password,
         redirect: false,
+        callbackUrl,
       });
 
       if (result?.error) {
         setError("Invalid credentials. Please try again.");
+      } else if (result?.url) {
+        window.location.href = result.url;
       } else if (result?.ok) {
-        // Redirect based on role — server will handle proper routing
-        router.push(callbackUrl);
-        router.refresh();
+        window.location.href = callbackUrl;
+      } else {
+        setError("Sign-in could not be completed. Please try again.");
       }
     } catch {
       setError("An error occurred. Please try again.");
@@ -73,9 +76,9 @@ function SignInForm() {
             </div>
           )}
 
-          {error && (
+          {(error || callbackError) && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg mb-5">
-              {error}
+              {error || "Invalid credentials. Please try again."}
             </div>
           )}
 
