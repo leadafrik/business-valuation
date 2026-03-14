@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
@@ -14,6 +14,7 @@ function SignInForm() {
   const callbackError = searchParams.get("error");
   const callbackCode = searchParams.get("code");
   const formRef = useRef<HTMLFormElement>(null);
+  const csrfInputRef = useRef<HTMLInputElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
 
@@ -22,51 +23,48 @@ function SignInForm() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [csrfToken, setCsrfToken] = useState("");
-
-  useEffect(() => {
-    let active = true;
-
-    fetch("/api/auth/csrf")
-      .then((response) => response.json())
-      .then((payload) => {
-        if (active && typeof payload?.csrfToken === "string") {
-          setCsrfToken(payload.csrfToken);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setError("Sign-in is unavailable right now. Please refresh and try again.");
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError("");
-    if (!csrfToken) {
-      setError("Sign-in is not ready yet. Refresh the page and try again.");
-      return;
-    }
-
-    const normalizedIdentifier = identifier.trim();
-    const isPhone = isPhoneLike(normalizedIdentifier);
-    const normalizedPhone = isPhone ? normalizePhone(normalizedIdentifier) : null;
-
-    if (emailInputRef.current) {
-      emailInputRef.current.value = isPhone ? "" : normalizedIdentifier;
-    }
-
-    if (phoneInputRef.current) {
-      phoneInputRef.current.value = normalizedPhone ?? "";
-    }
-
     setLoading(true);
-    formRef.current?.submit();
+
+    try {
+      const response = await fetch("/api/auth/csrf", {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      const payload = await response.json().catch(() => null);
+      const csrfToken =
+        payload && typeof payload.csrfToken === "string" ? payload.csrfToken : null;
+
+      if (!response.ok || !csrfToken) {
+        throw new Error("Missing CSRF token.");
+      }
+
+      const normalizedIdentifier = identifier.trim();
+      const isPhone = isPhoneLike(normalizedIdentifier);
+      const normalizedPhone = isPhone ? normalizePhone(normalizedIdentifier) : null;
+
+      if (csrfInputRef.current) {
+        csrfInputRef.current.value = csrfToken;
+      }
+
+      if (emailInputRef.current) {
+        emailInputRef.current.value = isPhone ? "" : normalizedIdentifier;
+      }
+
+      if (phoneInputRef.current) {
+        phoneInputRef.current.value = normalizedPhone ?? "";
+      }
+
+      formRef.current?.submit();
+    } catch {
+      setError("Sign-in could not be completed. Please try again.");
+      setLoading(false);
+    }
   };
 
   const callbackMessage =
@@ -111,7 +109,7 @@ function SignInForm() {
             method="POST"
             className="space-y-4"
           >
-            <input type="hidden" name="csrfToken" value={csrfToken} />
+            <input ref={csrfInputRef} type="hidden" name="csrfToken" defaultValue="" />
             <input type="hidden" name="callbackUrl" value={callbackUrl} />
             <input ref={emailInputRef} type="hidden" name="email" />
             <input ref={phoneInputRef} type="hidden" name="phone" />
@@ -134,7 +132,11 @@ function SignInForm() {
                 <label className="block text-sm font-medium text-slate-700">
                   Password
                 </label>
-                <Link href="/auth/forgot-password" className="text-xs text-green-600 hover:text-green-700">
+                <Link
+                  href="/auth/forgot-password"
+                  prefetch={false}
+                  className="text-xs text-green-600 hover:text-green-700"
+                >
                   Forgot password?
                 </Link>
               </div>
