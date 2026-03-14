@@ -47,9 +47,9 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen text-[var(--rf-navy)]">
       <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <nav className="app-panel flex items-center justify-between rounded-[1.95rem] px-5 py-4">
+        <nav className="landing-panel flex items-center justify-between rounded-[1.55rem] px-5 py-4">
           <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--rf-navy)] text-sm font-black text-white shadow-[0_16px_32px_-18px_rgba(10,35,66,0.55)]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-[1rem] bg-[var(--rf-navy)] text-sm font-black text-white shadow-[0_12px_24px_-18px_rgba(10,35,66,0.4)]">
               RF
             </div>
             <div>
@@ -70,7 +70,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/auth/signup"
-              className="inline-flex items-center gap-2 rounded-2xl bg-[var(--rf-navy)] px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--rf-navy-strong)]"
+              className="inline-flex items-center gap-2 rounded-xl bg-[var(--rf-navy)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--rf-navy-strong)]"
             >
               Get started
               <ArrowRight className="h-4 w-4" />
@@ -121,7 +121,7 @@ export default function LandingPage() {
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="rounded-[1.65rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,247,249,0.92))] px-4 py-4 shadow-[0_18px_34px_-30px_rgba(10,35,66,0.1)]"
+                  className="landing-soft-card rounded-[1.25rem] px-4 py-4"
                 >
                   <p className="text-3xl font-semibold text-[var(--rf-navy)]">{item.value}</p>
                   <p className="mt-2 text-sm leading-6 text-[var(--rf-slate)]">{item.label}</p>
@@ -130,9 +130,9 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-[2.35rem] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(10,35,66,0.98),rgba(10,35,66,0.9))] p-5 text-white shadow-[0_30px_80px_-52px_rgba(10,35,66,0.36)]">
-            <div className="absolute -right-10 -top-8 h-36 w-36 rounded-full bg-[rgba(249,168,38,0.16)] blur-3xl" />
-            <div className="absolute bottom-0 left-0 h-28 w-40 rounded-full bg-[rgba(46,125,50,0.14)] blur-3xl" />
+          <div className="landing-dark-panel relative overflow-hidden rounded-[1.85rem] p-5 text-white">
+            <div className="absolute -right-10 -top-8 h-32 w-32 rounded-full bg-[rgba(249,168,38,0.12)] blur-3xl" />
+            <div className="absolute bottom-0 left-0 h-24 w-36 rounded-full bg-[rgba(46,125,50,0.1)] blur-3xl" />
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">
@@ -142,7 +142,7 @@ export default function LandingPage() {
                   Stable from the first glance
                 </h2>
               </div>
-              <div className="rounded-2xl bg-white px-4 py-3 text-[var(--rf-navy)] shadow-sm">
+              <div className="rounded-[1.15rem] bg-white/[0.94] px-4 py-3 text-[var(--rf-navy)] shadow-[0_12px_28px_-24px_rgba(10,35,66,0.28)]">
                 <p className="flex items-center gap-2 whitespace-nowrap text-sm font-semibold">
                   <span className="uppercase tracking-[0.18em] text-[var(--rf-slate)]">Collected</span>
                   <span className="text-2xl">KES 328K</span>
@@ -150,7 +150,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="relative mt-5 rounded-[1.75rem] bg-white/8 p-4 backdrop-blur">
+            <div className="landing-dark-card relative mt-5 rounded-[1.35rem] p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-white">Collection progress</p>
@@ -164,14 +164,14 @@ export default function LandingPage() {
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[1.65rem] bg-white/7 p-4 backdrop-blur">
+              <div className="landing-dark-card rounded-[1.25rem] p-4">
                 <p className="text-sm font-semibold text-white">Open tickets</p>
                 <p className="mt-2 text-3xl font-semibold text-[var(--rf-gold)]">14</p>
                 <p className="mt-2 text-sm leading-6 text-white/62">
                   Prioritized work orders, not scattered follow-up.
                 </p>
               </div>
-              <div className="rounded-[1.65rem] bg-white/7 p-4 backdrop-blur">
+              <div className="landing-dark-card rounded-[1.25rem] p-4">
                 <p className="text-sm font-semibold text-white">Vacant units</p>
                 <p className="mt-2 text-3xl font-semibold text-[var(--rf-gold)]">08</p>
                 <p className="mt-2 text-sm leading-6 text-white/62">
@@ -189,9 +189,9 @@ export default function LandingPage() {
               return (
                 <article
                   key={card.title}
-                  className={`card-hover rounded-[1.85rem] border border-white/70 p-5 shadow-[0_18px_38px_-32px_rgba(10,35,66,0.1)] ${card.tone}`}
+                  className={`landing-soft-card landing-soft-card-hover rounded-[1.35rem] p-5 ${card.tone}`}
                 >
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${card.iconTone}`}>
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-[1rem] ${card.iconTone}`}>
                     <Icon className="h-5 w-5" />
                   </div>
                   <h2 className="mt-5 text-2xl font-semibold text-[var(--rf-navy)]">
@@ -205,7 +205,7 @@ export default function LandingPage() {
         </section>
 
         <section className="grid gap-5 py-6 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="app-panel rounded-[1.95rem] p-6">
+          <div className="landing-panel rounded-[1.55rem] p-6">
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--rf-slate)]">
               Why it works
             </p>
@@ -224,7 +224,7 @@ export default function LandingPage() {
               ].map((point) => (
                 <div
                   key={point}
-                  className="flex items-start gap-3 rounded-[1.55rem] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,247,249,0.92))] px-4 py-3"
+                  className="landing-soft-card flex items-start gap-3 rounded-[1.15rem] px-4 py-3"
                 >
                   <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--rf-green)]" />
                   <p className="text-sm leading-6 text-[var(--rf-slate)]">{point}</p>
@@ -255,10 +255,10 @@ export default function LandingPage() {
               return (
                 <div
                   key={item.title}
-                  className="app-panel rounded-[1.75rem] p-5"
+                  className="landing-panel rounded-[1.35rem] p-5"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-[var(--rf-navy)] text-white">
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[1rem] bg-[var(--rf-navy)] text-white">
                       <Icon className="h-5 w-5" />
                     </div>
                     <div>
@@ -273,8 +273,8 @@ export default function LandingPage() {
         </section>
 
         <section className="py-6">
-          <div className="relative overflow-hidden rounded-[2.1rem] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(10,35,66,0.98),rgba(10,35,66,0.92))] px-6 py-8 text-white shadow-[0_28px_80px_-48px_rgba(10,35,66,0.34)] sm:px-8">
-            <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-[rgba(249,168,38,0.12)] blur-3xl" />
+          <div className="landing-dark-panel relative overflow-hidden rounded-[1.75rem] px-6 py-8 text-white sm:px-8">
+            <div className="absolute right-0 top-0 h-36 w-36 rounded-full bg-[rgba(249,168,38,0.1)] blur-3xl" />
             <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/55">
@@ -290,14 +290,14 @@ export default function LandingPage() {
               <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
                 <Link
                   href="/auth/signup"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--rf-green)] px-6 py-3.5 text-base font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#266a2a]"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--rf-green)] px-6 py-3.5 text-base font-semibold text-white transition hover:bg-[#266a2a]"
                 >
                   Create workspace
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   href="/auth/signin"
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/16 bg-white/8 px-6 py-3.5 text-base font-semibold text-white transition hover:bg-white/12"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/16 bg-white/8 px-6 py-3.5 text-base font-semibold text-white transition hover:bg-white/12"
                 >
                   Sign in
                 </Link>
